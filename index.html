@@ -3,268 +3,431 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2e1065">
-<title>Candy Charm</title>
+<meta name="theme-color" content="#ffffff">
+<title>Larp Charm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --grape:#7c3aed; --grape-d:#2e1065; --grape-l:#c4b5fd;
-  --ice:#7dd3fc; --ice-d:#0c4a6e; --pink:#f472b6; --lime:#a3e635;
-  --glass:rgba(255,255,255,.10); --glass-b:rgba(255,255,255,.22);
-  --text:#f5f3ff; --muted:#c7c2e6; --bg:#14072e;
+  --text:#1d1d1f; --text-2:#6e6e73; --text-3:#86868b;
+  --bg:#ffffff; --bg-alt:#f5f5f7; --line:#d2d2d7; --fill:#e8e8ed;
+  --blue:#0071e3; --blue-hover:#0077ed; --link:#0066cc;
+  --green:#34c759; --red:#ff3b30; --orange:#f56300;
+  --radius:18px;
+  --font:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
-*{box-sizing:border-box}
-html,body{margin:0}
-body{
-  min-height:100vh; color:var(--text); font:15px/1.45 "DM Sans",system-ui,sans-serif;
-  background:
-    radial-gradient(900px 500px at 10% -10%, rgba(124,58,237,.55), transparent 60%),
-    radial-gradient(700px 500px at 110% 10%, rgba(125,211,252,.35), transparent 60%),
-    radial-gradient(600px 400px at 50% 110%, rgba(244,114,182,.25), transparent 60%),
-    var(--bg);
-  background-attachment:fixed;
-}
-.wrap{max-width:540px;margin:0 auto;padding:16px 16px 80px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 14px}
-.logo{font-family:Silkscreen,monospace;font-size:22px;line-height:1;letter-spacing:1px;
-  background:linear-gradient(180deg,#fff 0%,var(--grape-l) 45%,var(--ice) 55%,#fff 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 2px 0 var(--grape))}
-.logo small{display:block;font-size:10px;letter-spacing:3px;color:var(--ice);-webkit-text-fill-color:var(--ice);margin-top:4px}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-b);font-size:13px;color:var(--muted)}
-.dot{width:9px;height:9px;border-radius:50%;background:#6b6890;box-shadow:0 0 0 3px rgba(255,255,255,.06)}
-.dot.on{background:var(--lime);box-shadow:0 0 10px var(--lime)}
-.card{position:relative;margin:14px 0;padding:16px;border-radius:22px;
-  background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.04));
-  border:1px solid var(--glass-b);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px rgba(0,0,0,.25)}
-.card h2{margin:0 0 12px;font:700 13px Silkscreen,monospace;letter-spacing:2px;color:var(--ice);display:flex;align-items:center;justify-content:space-between}
-.card h2 span{color:var(--muted);font:500 12px "DM Sans";letter-spacing:0}
-.btn{appearance:none;border:0;cursor:pointer;font:700 14px "DM Sans";color:#1a0b3a;padding:12px 16px;border-radius:14px;
-  background:linear-gradient(180deg,#fff 0%,var(--grape-l) 50%,#a78bfa 51%,#ddd6fe 100%);
-  box-shadow:inset 0 -2px 0 rgba(0,0,0,.15),0 4px 14px rgba(124,58,237,.45);transition:transform .08s}
-.btn:active{transform:translateY(1px) scale(.98)}
-.btn.ice{background:linear-gradient(180deg,#fff 0%,#bae6fd 50%,var(--ice) 51%,#e0f2fe 100%);box-shadow:inset 0 -2px 0 rgba(0,0,0,.15),0 4px 14px rgba(125,211,252,.4)}
-.btn.pink{background:linear-gradient(180deg,#fff 0%,#fbcfe8 50%,var(--pink) 51%,#fce7f3 100%);box-shadow:inset 0 -2px 0 rgba(0,0,0,.15),0 4px 14px rgba(244,114,182,.4)}
-.btn.ghost{background:var(--glass);color:var(--text);border:1px solid var(--glass-b);box-shadow:none}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.full{width:100%}
-.row{display:flex;gap:10px;align-items:center}
-.row > *{flex:1}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.modes button{padding:12px 4px;border-radius:14px;border:1px solid var(--glass-b);background:var(--glass);color:var(--text);font:700 11px Silkscreen,monospace;letter-spacing:1px;cursor:pointer}
-.modes button.active{background:linear-gradient(180deg,rgba(196,181,253,.6),rgba(124,58,237,.6));border-color:var(--grape-l);box-shadow:0 0 14px rgba(124,58,237,.6)}
-.modes .ico{display:block;font-size:20px;margin-bottom:4px;font-family:system-ui}
-label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
-input[type=text],input[type=url],input[type=number],textarea,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--glass-b);background:rgba(10,4,30,.45);color:var(--text);font:15px "DM Sans";outline:none}
-input:focus,textarea:focus,select:focus{border-color:var(--ice);box-shadow:0 0 0 3px rgba(125,211,252,.2)}
-textarea{min-height:84px;resize:vertical}
-input[type=color]{width:100%;height:44px;border-radius:12px;border:1px solid var(--glass-b);background:transparent;padding:3px}
-input[type=range]{width:100%;accent-color:var(--pink)}
-.seg{display:flex;background:rgba(10,4,30,.45);border:1px solid var(--glass-b);border-radius:12px;padding:3px}
-.seg button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px 6px;border-radius:9px;font:600 13px "DM Sans";cursor:pointer}
-.seg button.on{background:var(--grape);color:#fff}
-.screen{width:180px;height:210px;border-radius:26px;margin:4px auto 0;display:block;background:#000;
-  border:6px solid rgba(255,255,255,.25);box-shadow:0 0 0 2px rgba(124,58,237,.6),0 10px 30px rgba(0,0,0,.4)}
-.art{width:120px;height:120px;border-radius:12px;display:block;margin:4px auto 0;background:#000;border:2px solid rgba(255,255,255,.3)}
-.note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
-.note code{background:rgba(255,255,255,.1);padding:1px 5px;border-radius:5px}
-.prog{height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:10px;display:none}
-.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--pink),var(--ice));transition:width .1s}
-.banner{padding:12px 14px;border-radius:14px;background:rgba(244,114,182,.18);border:1px solid rgba(244,114,182,.5);font-size:13.5px;display:none}
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);opacity:0;padding:10px 16px;border-radius:999px;background:rgba(20,7,46,.92);border:1px solid var(--ice);font-size:14px;transition:.25s;pointer-events:none;z-index:9}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.check{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:14px;color:var(--text)}
-.check input{width:20px;height:20px;accent-color:var(--grape)}
-.np{display:flex;gap:12px;align-items:center;margin-top:10px}
-.np img{width:56px;height:56px;border-radius:10px;object-fit:cover;background:#000}
-.np b{display:block}
-.np span{color:var(--muted);font-size:13px}
-.disabled-when-off{transition:opacity .2s}
-body:not(.connected) .needs-conn{opacity:.5;pointer-events:none}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth;scroll-padding-top:60px}
+body{margin:0;background:var(--bg);color:var(--text);font:400 17px/1.47 var(--font);letter-spacing:-.022em;-webkit-font-smoothing:antialiased}
+a{color:var(--link);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;letter-spacing:inherit}
+
+/* local nav */
+.lnav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.8);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08)}
+.lnav-in{max-width:980px;margin:0 auto;height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.lnav-title{font-size:21px;font-weight:600;letter-spacing:.011em;color:var(--text)}
+.lnav-right{display:flex;align-items:center;gap:14px}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);letter-spacing:-.01em}
+.dot{width:7px;height:7px;border-radius:50%;background:#c7c7cc}
+.dot.on{background:var(--green)}
+.bat{display:none;align-items:center;gap:5px}
+.bat.on{display:flex}
+.bat-shell{position:relative;width:22px;height:11px;border:1.2px solid var(--text-3);border-radius:3px}
+.bat-shell::after{content:"";position:absolute;right:-3.5px;top:3px;width:2px;height:4px;border-radius:0 1px 1px 0;background:var(--text-3)}
+.bat-fill{position:absolute;left:1.5px;top:1.5px;bottom:1.5px;border-radius:1px;background:var(--text)}
+.bat.charging .bat-fill{background:var(--green)}
+.bolt{display:none;width:9px;height:12px}
+.bat.charging .bolt{display:block}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;cursor:pointer;border-radius:980px;padding:11px 22px;font-size:17px;font-weight:400;background:var(--blue);color:#fff;transition:background .2s}
+.btn:hover{background:var(--blue-hover)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.sm{padding:6px 14px;font-size:12px}
+.btn.secondary{background:transparent;color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.btn.secondary:hover{background:var(--blue);color:#fff}
+.btn.grey{background:var(--fill);color:var(--text)}
+.btn.grey:hover{background:#dcdce1}
+.link{background:none;border:0;padding:0;color:var(--link);cursor:pointer;font-size:17px}
+.link:hover{text-decoration:underline}
+.link::after{content:" \203A"}
+
+/* hero */
+.hero{background:#000;color:#f5f5f7;text-align:center;padding:56px 16px 0;overflow:hidden}
+.eyebrow{color:var(--orange);font-size:17px;font-weight:600;margin:0 0 6px}
+.hero h1{font-size:clamp(48px,11vw,80px);line-height:1.05;font-weight:600;letter-spacing:-.015em;margin:0}
+.hero .sub{font-size:clamp(21px,4.5vw,28px);line-height:1.14;font-weight:400;color:#a1a1a6;margin:10px 0 24px;letter-spacing:.007em}
+.hero .ctas{display:flex;justify-content:center;align-items:center;gap:22px;flex-wrap:wrap}
+.hero .link{color:#2997ff}
+.hero-device{margin:44px auto 0;width:min(260px,64vw);position:relative}
+.device{position:relative;aspect-ratio:240/280;border-radius:22%/19%;padding:9px;background:linear-gradient(145deg,#3a3a3c,#1c1c1e 45%,#2c2c2e);box-shadow:0 30px 60px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.12)}
+.device canvas,.device img,.device video{display:block;width:100%;height:100%;border-radius:18%/15.5%;background:#000;object-fit:cover}
+.hero-device .device{border-bottom-left-radius:0;border-bottom-right-radius:0;padding-bottom:0}
+.hero-device .device canvas{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.hero-note{color:#86868b;font-size:12px;margin:0;padding:14px 0 20px}
+
+/* explore strip */
+.explore{background:var(--bg-alt);padding:56px 0 64px}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+.sec-head{font-size:clamp(32px,6vw,48px);line-height:1.08;font-weight:600;letter-spacing:-.003em;margin:0 0 8px}
+.sec-sub{font-size:clamp(19px,3.4vw,21px);line-height:1.38;color:var(--text-2);margin:0 0 28px;max-width:640px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:28px;padding:18px;background:#fff;border:0;border-radius:var(--radius);cursor:pointer;text-align:left;color:var(--text);transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+.tile:hover{transform:scale(1.02);box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.tile svg{width:28px;height:28px;stroke:var(--text);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tile b{font-size:17px;font-weight:600;display:block}
+.tile span{font-size:14px;color:var(--text-2)}
+.tile.active{box-shadow:inset 0 0 0 2px var(--blue)}
+.tile.active svg{stroke:var(--blue)}
+
+/* sections */
+.sec{padding:72px 0}
+.sec.alt{background:var(--bg-alt)}
+.panel{background:#fff;border-radius:28px;padding:28px;display:grid;gap:32px;grid-template-columns:1fr}
+.sec.alt .panel{background:#fff}
+.sec:not(.alt) .panel{background:var(--bg-alt)}
+@media (min-width:760px){ .panel.split{grid-template-columns:260px 1fr;align-items:start} }
+.preview{width:min(240px,70vw);margin:0 auto}
+.preview .device{padding:7px;box-shadow:0 14px 30px rgba(0,0,0,.16),inset 0 0 0 1px rgba(255,255,255,.12)}
+.field{margin:0 0 20px}
+.field:last-child{margin-bottom:0}
+.label{display:block;font-size:14px;font-weight:600;color:var(--text);margin:0 0 8px}
+.hint{font-size:14px;color:var(--text-2);margin:8px 0 0}
+input[type=text],input[type=url],textarea,select{width:100%;padding:13px 15px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--text);font:400 17px var(--font);letter-spacing:-.022em;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236e6e73' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center;padding-right:38px}
+input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(0,113,227,.15)}
+textarea{min-height:96px;resize:vertical}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.row > .grow{flex:1;min-width:140px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:24px}
+
+/* segmented control */
+.seg{display:inline-flex;width:100%;background:var(--fill);border-radius:10px;padding:2px;position:relative}
+.seg button{flex:1;border:0;background:transparent;padding:7px 10px;border-radius:8px;font-size:14px;font-weight:500;color:var(--text);cursor:pointer;transition:background .2s,box-shadow .2s}
+.seg button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
+
+/* swatches */
+.swatches{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sw{width:30px;height:30px;border-radius:50%;border:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);position:relative}
+.sw.on::after{content:"";position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2px var(--blue)}
+.sw-custom{position:relative;width:30px;height:30px;border-radius:50%;overflow:hidden;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.sw-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+/* sliders */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(var(--blue),var(--blue)) 0/var(--p,50%) 100% no-repeat,var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;margin-top:-10px;box-shadow:0 1px 4px rgba(0,0,0,.25),0 0 0 .5px rgba(0,0,0,.06)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--blue)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.range-row{display:flex;justify-content:space-between;font-size:14px;color:var(--text-2)}
+
+/* switch */
+.switch{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0;font-size:17px}
+.switch input{-webkit-appearance:none;appearance:none;width:51px;height:31px;border-radius:31px;background:var(--fill);position:relative;cursor:pointer;transition:background .25s;flex:none}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);transition:transform .25s}
+.switch input:checked{background:var(--green)}
+.switch input:checked::after{transform:translateX(20px)}
+
+/* file button */
+.file{position:relative;display:inline-flex}
+.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* progress */
+.progress{display:none;margin-top:18px}
+.progress.on{display:block}
+.bar{height:4px;border-radius:2px;background:var(--fill);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--blue);transition:width .15s linear}
+.progress p{margin:8px 0 0;font-size:14px;color:var(--text-2)}
+
+/* list */
+.list{margin:0;padding:0;list-style:none;border-radius:14px;background:#fff;overflow:hidden}
+.list li{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--fill)}
+.list li:first-child{border-top:0}
+.list .meta{flex:1;min-width:0}
+.list .meta b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .meta span{font-size:14px;color:var(--text-2)}
+.list .now{font-size:12px;color:var(--green);font-weight:600}
+.empty{padding:18px 16px;color:var(--text-2);font-size:15px}
+.storage{margin:22px 0 8px;font-size:14px;color:var(--text-2);display:flex;justify-content:space-between}
+.storage-bar{height:6px;border-radius:3px;background:var(--fill);overflow:hidden}
+.storage-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5e5ce6,#0a84ff)}
+.sub-head{font-size:21px;font-weight:600;margin:0 0 12px;letter-spacing:.011em}
+
+.np{display:none;align-items:center;gap:14px;margin-top:18px}
+.np img{width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--fill)}
+.np b{display:block;font-weight:600}
+.np span{font-size:14px;color:var(--text-2)}
+code{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--fill);padding:2px 6px;border-radius:6px;word-break:break-all}
+
+.notice{display:none;max-width:980px;margin:16px auto 0;padding:0 16px}
+.notice div{background:#fff4e5;color:#7a4100;border-radius:14px;padding:14px 18px;font-size:15px}
+
+footer{background:var(--bg-alt);color:var(--text-2);font-size:12px;line-height:1.5;padding:24px 0 40px}
+footer .wrap > *{margin:0 0 8px}
+footer hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+
+.hud{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;background:rgba(29,29,31,.92);color:#fff;font-size:15px;padding:12px 20px;border-radius:14px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:opacity .25s,transform .25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px);text-align:center}
+.hud.on{opacity:1;transform:translate(-50%,0)}
+.hidden{display:none !important}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="logo">CANDY CHARM<small>controller</small></div>
-    <div class="pill"><span class="dot" id="dot"></span><span id="connText">offline</span></div>
-  </header>
 
-  <div class="banner" id="noBle">This page needs <b>Web Bluetooth</b>. Open it in <b>Chrome on Android</b> (or Chrome/Edge on a laptop), served over <b>https</b>.</div>
-
-  <div class="card">
-    <div class="row">
-      <button class="btn full" id="connectBtn">Connect charm</button>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div class="pill" style="justify-content:center">🔋 <span id="bat">--</span></div>
-      <div class="pill" style="justify-content:center">fw <span id="fw">--</span></div>
+<nav class="lnav">
+  <div class="lnav-in">
+    <span class="lnav-title">Larp Charm</span>
+    <div class="lnav-right">
+      <span class="status"><span class="bat" id="bat"><svg class="bolt" viewBox="0 0 9 12"><path d="M5.5 0L0 7h3.5L2.5 12 9 4.5H5L5.5 0z" fill="#34c759"/></svg><span class="bat-shell"><span class="bat-fill" id="batFill"></span></span><span id="batPct"></span></span></span>
+      <span class="status"><span class="dot" id="dot"></span><span id="connText">Not connected</span></span>
+      <button class="btn sm" id="connectBtn">Connect</button>
     </div>
   </div>
+</nav>
 
-  <div class="card needs-conn">
-    <h2>SCREEN <span>or swipe on the charm</span></h2>
-    <div class="grid3 modes" id="modes">
-      <button data-m="0"><span class="ico">⏰</span>CLOCK</button>
-      <button data-m="1"><span class="ico">💬</span>TEXT</button>
-      <button data-m="2"><span class="ico">🖼️</span>PHOTO</button>
-      <button data-m="3"><span class="ico">💿</span>MUSIC</button>
-      <button data-m="4"><span class="ico">🐱</span>PET</button>
-      <button data-m="5"><span class="ico">✦</span>CARD</button>
+<div class="notice" id="noBle"><div>This page needs Web Bluetooth. Open it in Chrome on Android, or Chrome or Edge on a computer.</div></div>
+
+<section class="hero">
+  <p class="eyebrow">New</p>
+  <h1>Larp Charm</h1>
+  <p class="sub">Small screen. Big personality.</p>
+  <div class="ctas">
+    <button class="btn" id="heroConnect">Connect</button>
+    <a class="link" href="#screens">Explore screens</a>
+  </div>
+  <div class="hero-device">
+    <div class="device"><canvas id="heroCv" width="240" height="280"></canvas></div>
+  </div>
+</section>
+
+<section class="explore" id="screens">
+  <div class="wrap">
+    <h2 class="sec-head">Choose a screen.</h2>
+    <p class="sec-sub">Swipe on the charm, or pick one here.</p>
+    <div class="tiles" id="modes">
+      <button class="tile" data-m="0"><svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="11"/><path d="M14 8v6l4 2"/></svg><div><b>Clock</b><span>Time and date</span></div></button>
+      <button class="tile" data-m="1"><svg viewBox="0 0 28 28"><path d="M5 7h18M5 13h18M5 19h11"/></svg><div><b>Text</b><span>Your words</span></div></button>
+      <button class="tile" data-m="2"><svg viewBox="0 0 28 28"><rect x="4" y="5" width="20" height="18" rx="3"/><circle cx="10" cy="11" r="2"/><path d="M4 20l6-5 5 4 3-2 6 4"/></svg><div><b>Photo</b><span>One picture</span></div></button>
+      <button class="tile" data-m="3"><svg viewBox="0 0 28 28"><rect x="3" y="6" width="22" height="16" rx="3"/><path d="M12 10.5v7l6-3.5z"/></svg><div><b>Clips</b><span>GIFs and videos</span></div></button>
+      <button class="tile" data-m="4"><svg viewBox="0 0 28 28"><path d="M10 20V7l12-3v13"/><circle cx="7" cy="20" r="3"/><circle cx="19" cy="17" r="3"/></svg><div><b>Music</b><span>Now playing</span></div></button>
+      <button class="tile" data-m="5"><svg viewBox="0 0 28 28"><path d="M6 5l4 4h8l4-4v13a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5z"/><path d="M11 15h.01M17 15h.01"/></svg><div><b>Pet</b><span>Keep it happy</span></div></button>
+      <button class="tile" data-m="6"><svg viewBox="0 0 28 28"><rect x="3" y="6" width="22" height="16" rx="3"/><circle cx="10" cy="13" r="2.5"/><path d="M6 19c1-2 2.5-3 4-3s3 1 4 3M17 11h5M17 15h4"/></svg><div><b>Card</b><span>Share your link</span></div></button>
     </div>
   </div>
+</section>
 
-  <div class="card needs-conn">
-    <h2>TEXT <span>ASCII only</span></h2>
-    <textarea id="txt" maxlength="300" placeholder="type something cute">hello :)</textarea>
-    <label>Style</label>
-    <div class="seg" id="txtStyle">
-      <button data-v="0" class="on">Static</button><button data-v="1">Marquee</button><button data-v="2">Rainbow</button>
-    </div>
-    <div class="row">
-      <div><label>Text colour</label><input type="color" id="txtFg" value="#ffffff"></div>
-      <div><label>Background</label><input type="color" id="txtBg" value="#2e1065"></div>
-    </div>
-    <button class="btn full" style="margin-top:14px" id="sendTxt">Send text</button>
-  </div>
-
-  <div class="card needs-conn">
-    <h2>PHOTO <span>240 × 280</span></h2>
-    <canvas id="photoCv" width="240" height="280" class="screen"></canvas>
-    <label>Pick an image</label>
-    <input type="file" id="photoFile" accept="image/*">
-    <label>Fit</label>
-    <div class="seg" id="photoFit"><button data-v="cover" class="on">Fill</button><button data-v="contain">Fit</button></div>
-    <label>Zoom</label>
-    <input type="range" id="photoZoom" min="100" max="300" value="100">
-    <button class="btn ice full" style="margin-top:14px" id="sendPhoto" disabled>Send photo</button>
-    <div class="prog" id="photoProg"><i></i></div>
-    <p class="note">Takes ~5–10 s over Bluetooth. The photo is saved on the charm and survives restarts.</p>
-  </div>
-
-  <div class="card needs-conn">
-    <h2>MUSIC <span>now playing</span></h2>
-    <label>Source</label>
-    <div class="seg" id="musicSrc"><button data-v="spotify" class="on">Spotify live</button><button data-v="manual">Manual</button></div>
-
-    <div id="spotifyBox">
-      <label>Spotify Client ID</label>
-      <input type="text" id="spClient" placeholder="from developer.spotify.com/dashboard" autocomplete="off">
-      <div class="row" style="margin-top:10px">
-        <button class="btn pink" id="spLogin">Log in to Spotify</button>
-        <button class="btn ghost" id="spLogout">Log out</button>
+<section class="sec" id="text">
+  <div class="wrap">
+    <h2 class="sec-head">Say it your way.</h2>
+    <p class="sec-sub">Type anything. It sizes itself to fit the screen.</p>
+    <div class="panel">
+      <div class="field">
+        <label class="label" for="txt">Message</label>
+        <textarea id="txt" maxlength="300" placeholder="Type a message">hello :)</textarea>
+        <p class="hint">Letters, numbers and basic symbols. Emoji show as ?</p>
       </div>
-      <label class="check"><input type="checkbox" id="spLive" checked> Keep the charm in sync while this page is open</label>
-      <div class="np" id="spNow" style="display:none"><img id="spArt" alt=""><div><b id="spTitle"></b><span id="spArtist"></span></div></div>
-      <p class="note">Redirect URI to add in your Spotify app: <code id="redirUri"></code></p>
-    </div>
-
-    <div id="manualBox" style="display:none">
-      <label>Title</label><input type="text" id="mTitle" placeholder="song title">
-      <label>Artist</label><input type="text" id="mArtist" placeholder="artist">
+      <div class="field">
+        <span class="label">Style</span>
+        <div class="seg" id="txtStyle"><button data-v="0" class="on">Static</button><button data-v="1">Scrolling</button><button data-v="2">Rainbow</button></div>
+      </div>
       <div class="row">
-        <div><label>Length (m:ss)</label><input type="text" id="mLen" value="3:30"></div>
-        <div><label>Vibe colour</label><input type="color" id="mColor" value="#f472b6"></div>
+        <div class="grow field"><span class="label">Text colour</span><div class="swatches" data-target="txtFg" data-colors="#ffffff,#1d1d1f,#ffd60a,#ff375f,#64d2ff,#30d158"></div><input type="hidden" id="txtFg" value="#ffffff"></div>
+        <div class="grow field"><span class="label">Background</span><div class="swatches" data-target="txtBg" data-colors="#2e1065,#000000,#0a84ff,#ff2d55,#ffffff,#1c3d2e"></div><input type="hidden" id="txtBg" value="#2e1065"></div>
       </div>
-      <label>Album art (optional)</label>
-      <input type="file" id="mArtFile" accept="image/*">
-      <canvas id="artCv" width="120" height="120" class="art"></canvas>
-      <label class="check"><input type="checkbox" id="mPlaying" checked> Playing</label>
-      <button class="btn pink full" style="margin-top:14px" id="sendMusic">Send to charm</button>
-      <p class="note">Works for YouTube Music or anything else — just type it in.</p>
+      <div class="actions"><button class="btn" id="sendTxt">Show on charm</button></div>
     </div>
   </div>
+</section>
 
-  <div class="card needs-conn">
-    <h2>PET <span>double-tap to feed</span></h2>
-    <div class="row">
-      <div><label>Species</label><select id="petSp"><option value="0">Cat</option><option value="1">Ghost</option><option value="2">Frog</option></select></div>
-      <div><label>Colour</label><input type="color" id="petCol" value="#ffc478"></div>
-    </div>
-    <label>Name</label><input type="text" id="petName" value="mochi" maxlength="12">
-    <div class="row" style="margin-top:14px">
-      <button class="btn" id="sendPet">Update pet</button>
-      <button class="btn pink" id="feedPet">Feed 🍙</button>
-    </div>
-  </div>
-
-  <div class="card needs-conn">
-    <h2>CARD <span>shown with the NFC hint</span></h2>
-    <label>Name</label><input type="text" id="cName" value="your name" maxlength="20">
-    <label>Subtitle</label><input type="text" id="cSub" value="tap for portfolio" maxlength="24">
-    <label>Accent</label><input type="color" id="cAcc" value="#7dd3fc">
-    <button class="btn ice full" style="margin-top:14px" id="sendCard">Send card</button>
-  </div>
-
-  <div class="card">
-    <h2>NFC TAG <span>no charm needed</span></h2>
-    <label>Link people get when they tap</label>
-    <input type="url" id="nfcUrl" placeholder="https://yourname.github.io/tap">
-    <button class="btn full" style="margin-top:14px" id="writeNfc">Write to NFC tag</button>
-    <p class="note">Press the button, then hold the tag to the back of your phone. Tip: write a link you control (like a GitHub Pages redirect) so you can change where it goes later without rewriting the tag.</p>
-  </div>
-
-  <div class="card needs-conn">
-    <h2>SETTINGS</h2>
-    <label>Brightness</label>
-    <input type="range" id="bright" min="8" max="255" value="200">
-    <div class="row">
-      <div><label>Screen off after</label>
-        <select id="sleep"><option value="10">10 s</option><option value="30" selected>30 s</option><option value="60">1 min</option><option value="120">2 min</option><option value="0">Never</option></select>
+<section class="sec alt" id="photo">
+  <div class="wrap">
+    <h2 class="sec-head">Picture perfect.</h2>
+    <p class="sec-sub">Pick a photo, frame it, and it stays on your charm, even after a restart.</p>
+    <div class="panel split">
+      <div class="preview"><div class="device"><canvas id="photoCv" width="240" height="280"></canvas></div></div>
+      <div>
+        <div class="field">
+          <span class="file btn grey">Choose photo<input type="file" id="photoFile" accept="image/*"></span>
+        </div>
+        <div class="field"><span class="label">Fit</span><div class="seg" id="photoFit"><button data-v="cover" class="on">Fill</button><button data-v="contain">Fit</button></div></div>
+        <div class="field"><div class="range-row"><span class="label">Zoom</span><span id="zoomVal">100%</span></div><input type="range" id="photoZoom" min="100" max="300" value="100"></div>
+        <div class="actions"><button class="btn" id="sendPhoto" disabled>Send photo</button></div>
+        <div class="progress" id="photoProg"><div class="bar"><i></i></div><p></p></div>
       </div>
     </div>
-    <label class="check"><input type="checkbox" id="swap"> Swap swipe direction</label>
-    <div class="row" style="margin-top:14px">
-      <button class="btn ghost" id="syncTime">Sync time</button>
-      <button class="btn ghost" id="findMe">Find my charm 🔔</button>
+  </div>
+</section>
+
+<section class="sec" id="clips">
+  <div class="wrap">
+    <h2 class="sec-head">GIFs and videos. On the go.</h2>
+    <p class="sec-sub">Long GIFs and video clips play smoothly on your charm. Save several and tap the screen to switch between them.</p>
+    <div class="panel split">
+      <div class="preview"><div class="device" id="clipDevice"><canvas id="clipCv" width="240" height="280"></canvas></div></div>
+      <div>
+        <div class="field"><span class="file btn grey">Choose GIF or video<input type="file" id="clipFile" accept="image/gif,video/*"></span><p class="hint" id="clipInfo">MP4, MOV, WebM or GIF.</p></div>
+        <div class="field"><span class="label">Name</span><input type="text" id="clipName" maxlength="20" placeholder="My clip"></div>
+        <div class="field"><span class="label">Fit</span><div class="seg" id="clipFit"><button data-v="cover" class="on">Fill</button><button data-v="contain">Fit</button></div></div>
+        <div id="videoOpts" class="hidden">
+          <div class="field"><div class="range-row"><span class="label">Start</span><span id="startVal">0:00</span></div><input type="range" id="clipStart" min="0" max="0" step="0.1" value="0"></div>
+          <div class="field"><div class="range-row"><span class="label">Length</span><span id="lenVal">10 s</span></div><input type="range" id="clipLen" min="1" max="60" step="1" value="10"></div>
+          <div class="field"><span class="label">Smoothness</span><div class="seg" id="clipFps"><button data-v="10">10 fps</button><button data-v="15" class="on">15 fps</button><button data-v="20">20 fps</button><button data-v="24">24 fps</button></div></div>
+        </div>
+        <div class="field"><span class="label">Quality</span><div class="seg" id="clipQ"><button data-v="0.55">Smaller</button><button data-v="0.7" class="on">Balanced</button><button data-v="0.85">Sharper</button></div></div>
+        <p class="hint" id="clipEstimate"></p>
+        <div class="actions"><button class="btn" id="sendClip" disabled>Send to charm</button></div>
+        <div class="progress" id="clipProg"><div class="bar"><i></i></div><p></p></div>
+      </div>
+    </div>
+    <div style="margin-top:40px">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px"><h3 class="sub-head" style="margin:0">On your charm</h3><button class="link" id="refreshClips">Refresh</button></div>
+      <ul class="list" id="clipList"><li class="empty">Connect to see your saved clips.</li></ul>
+      <div class="storage"><span id="storageText">Storage</span><span id="storageFree"></span></div>
+      <div class="storage-bar"><i id="storageFill"></i></div>
     </div>
   </div>
-</div>
-<div class="toast" id="toast"></div>
+</section>
+
+<section class="sec alt" id="music">
+  <div class="wrap">
+    <h2 class="sec-head">Now playing. Now showing.</h2>
+    <p class="sec-sub">Album art and a glow that matches the cover, live from Spotify or typed in for anything else.</p>
+    <div class="panel">
+      <div class="field"><div class="seg" id="musicSrc"><button data-v="spotify" class="on">Spotify</button><button data-v="manual">Manual</button></div></div>
+      <div id="spotifyBox">
+        <div class="field"><label class="label" for="spClient">Spotify Client ID</label><input type="text" id="spClient" placeholder="From developer.spotify.com/dashboard" autocomplete="off"></div>
+        <div class="field switch"><span>Keep the charm in sync</span><input type="checkbox" id="spLive" checked></div>
+        <div class="actions" style="margin-top:8px"><button class="btn" id="spLogin">Sign in with Spotify</button><button class="link" id="spLogout">Sign out</button></div>
+        <div class="np" id="spNow"><img id="spArt" alt=""><div><b id="spTitle"></b><span id="spArtist"></span></div></div>
+        <p class="hint">Add this Redirect URI to your Spotify app: <code id="redirUri"></code></p>
+      </div>
+      <div id="manualBox" class="hidden">
+        <div class="row"><div class="grow field"><label class="label" for="mTitle">Song</label><input type="text" id="mTitle" placeholder="Song title"></div><div class="grow field"><label class="label" for="mArtist">Artist</label><input type="text" id="mArtist" placeholder="Artist"></div></div>
+        <div class="row"><div class="grow field"><label class="label" for="mLen">Length</label><input type="text" id="mLen" value="3:30"></div><div class="grow field"><span class="label">Album art</span><span class="file btn grey">Choose image<input type="file" id="mArtFile" accept="image/*"></span></div></div>
+        <canvas id="artCv" width="120" height="120" class="hidden"></canvas>
+        <input type="hidden" id="mColor" value="#f472b6">
+        <div class="field switch"><span>Playing</span><input type="checkbox" id="mPlaying" checked></div>
+        <div class="actions"><button class="btn" id="sendMusic">Show on charm</button></div>
+        <p class="hint">Works with YouTube Music or any other app.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="pet">
+  <div class="wrap">
+    <h2 class="sec-head">A friend that never leaves.</h2>
+    <p class="sec-sub">Tap the charm to pet it. Double‑tap or feed it here to keep it happy.</p>
+    <div class="panel">
+      <div class="field"><span class="label">Species</span><div class="seg" id="petSp"><button data-v="0" class="on">Cat</button><button data-v="1">Ghost</button><button data-v="2">Frog</button></div></div>
+      <div class="row">
+        <div class="grow field"><label class="label" for="petName">Name</label><input type="text" id="petName" value="mochi" maxlength="12"></div>
+        <div class="grow field"><span class="label">Colour</span><div class="swatches" data-target="petCol" data-colors="#ffc478,#ff9fb2,#a7f3d0,#c4b5fd,#7dd3fc,#f5f5f7"></div><input type="hidden" id="petCol" value="#ffc478"></div>
+      </div>
+      <div class="actions"><button class="btn" id="sendPet">Update pet</button><button class="btn secondary" id="feedPet">Feed</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec alt" id="card">
+  <div class="wrap">
+    <h2 class="sec-head">Tap. Connected.</h2>
+    <p class="sec-sub">Show your name, then let people tap their phone on your charm to open your link.</p>
+    <div class="panel">
+      <div class="row">
+        <div class="grow field"><label class="label" for="cName">Name</label><input type="text" id="cName" value="your name" maxlength="20"></div>
+        <div class="grow field"><label class="label" for="cSub">Subtitle</label><input type="text" id="cSub" value="tap for portfolio" maxlength="24"></div>
+      </div>
+      <div class="field"><span class="label">Accent</span><div class="swatches" data-target="cAcc" data-colors="#7dd3fc,#c4b5fd,#ff9fb2,#30d158,#ffd60a,#ffffff"></div><input type="hidden" id="cAcc" value="#7dd3fc"></div>
+      <div class="actions"><button class="btn" id="sendCard">Show card</button></div>
+      <div style="border-top:1px solid var(--line);padding-top:28px">
+        <h3 class="sub-head">NFC tag</h3>
+        <div class="field"><label class="label" for="nfcUrl">Link to open</label><input type="url" id="nfcUrl" placeholder="https://yourname.github.io"></div>
+        <div class="actions" style="margin-top:0"><button class="btn secondary" id="writeNfc">Write NFC tag</button></div>
+        <p class="hint">Tap the button, then hold the tag to the back of your phone. Works in Chrome on Android.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="settings">
+  <div class="wrap">
+    <h2 class="sec-head">Make it yours.</h2>
+    <p class="sec-sub">Brightness, sleep and gestures.</p>
+    <div class="panel">
+      <div class="field"><div class="range-row"><span class="label">Brightness</span><span id="brightVal">78%</span></div><input type="range" id="bright" min="8" max="255" value="200"></div>
+      <div class="field"><label class="label" for="sleep">Turn screen off after</label>
+        <select id="sleep"><option value="10">10 seconds</option><option value="30" selected>30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="0">Never</option></select>
+        <p class="hint">Choose Never to keep a clip playing all day.</p>
+      </div>
+      <div class="field switch"><span>Reverse swipe direction</span><input type="checkbox" id="swap"></div>
+      <div class="actions"><button class="btn grey" id="syncTime">Sync time</button><button class="btn grey" id="findMe">Play sound</button></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Larp Charm works over Bluetooth in Chrome on Android, and in Chrome or Edge on a computer. Keep this page open while sending photos and clips.</p>
+    <p>Gestures on the charm: swipe left or right to change screens, up or down for brightness, press and hold to show your card.</p>
+    <hr>
+    <p>Larp Charm · Firmware <span id="fw">—</span></p>
+  </div>
+</footer>
+
+<div class="hud" id="hud"></div>
 
 <script>
-// ─────────── BLE protocol (must match firmware) ───────────
+// ─────────── Protocol (must match firmware 2.x) ───────────
 const SVC = '6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const RX  = '6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const ST  = '6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee';
-const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, IMG_BEGIN:5, IMG_DATA:6, IMG_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14};
-const CHUNK = 495;
+const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, CLIP_LIST:15, CLIP_PLAY:16, CLIP_DELETE:17};
+const MODE = {CLOCK:0, TEXT:1, PHOTO:2, CLIP:3, MUSIC:4, PET:5, CARD:6};
+const CHUNK = 495, WINDOW = 16;
+const W = 240, H = 280;
 
 const $ = id => document.getElementById(id);
 const enc = new TextEncoder();
 let device = null, rxChar = null, stChar = null, manualDisconnect = false;
 let queue = Promise.resolve();
+let state = { fsUsed: 0, fsTotal: 0, clipId: 0, clips: [] };
 
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
+function hud(msg){ const t = $('hud'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200); }
+const act = fn => async (...a) => { try { await fn(...a); } catch (e) { hud(e.message === 'not connected' ? 'Connect your Larp Charm first.' : e.message); } };
 
-// all GATT operations go through one queue — Web Bluetooth rejects overlapping writes
-function enqueue(fn){ const p = queue.then(fn); queue = p.catch(()=>{}); return p; }
-function write(bytes){ return enqueue(async()=>{ if(!rxChar) throw new Error('not connected'); await rxChar.writeValueWithResponse(bytes); }); }
+function enqueue(fn){ const p = queue.then(fn); queue = p.catch(() => {}); return p; }
+function write(bytes){ return enqueue(async () => { if (!rxChar) throw new Error('not connected'); await rxChar.writeValueWithResponse(bytes); }); }
 
-const u32 = v => [v & 255, (v>>>8)&255, (v>>>16)&255, (v>>>24)&255];
-const i16 = v => [v & 255, (v>>8)&255];
+const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+const i16 = v => [v & 255, (v >> 8) & 255];
 const hexRgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
-const rgb565 = h => { const [r,g,b]=hexRgb(h); const v=((r&0xF8)<<8)|((g&0xFC)<<3)|(b>>3); return [v>>8, v&255]; };
-const ascii = s => s.normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^\x20-\x7E\n]/g,'?');
-function packet(cmd, header=[], str=''){ const s=enc.encode(str); const out=new Uint8Array(1+header.length+s.length); out[0]=cmd; out.set(header,1); out.set(s,1+header.length); return out; }
+const rgb565 = h => { const [r,g,b] = hexRgb(h); const v = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3); return [v >> 8, v & 255]; };
+const ascii = s => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\x20-\x7E\n]/g, '?');
+function packet(cmd, header = [], str = ''){ const s = enc.encode(str); const out = new Uint8Array(1 + header.length + s.length); out[0] = cmd; out.set(header, 1); out.set(s, 1 + header.length); return out; }
+const fmtBytes = b => b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+const fmtTime = s => { s = Math.max(0, Math.round(s)); return s >= 60 ? Math.floor(s / 60) + ' min ' + (s % 60) + ' s' : s + ' s'; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ─────────── Connection ───────────
-if(!navigator.bluetooth) $('noBle').style.display='block';
+if (!navigator.bluetooth) $('noBle').style.display = 'block';
 
-$('connectBtn').onclick = async () => {
+async function connect(){
   if (device && device.gatt.connected) { manualDisconnect = true; device.gatt.disconnect(); return; }
   try {
-    device = await navigator.bluetooth.requestDevice({ filters:[{ services:[SVC] }] });
+    device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }] });
     device.addEventListener('gattserverdisconnected', onDisconnected);
     manualDisconnect = false;
     await connectGatt();
-  } catch (e) { if (e.name !== 'NotFoundError') toast(e.message); }
-};
+  } catch (e) { if (e.name !== 'NotFoundError') hud(e.message); }
+}
+$('connectBtn').onclick = connect;
+$('heroConnect').onclick = connect;
 
 async function connectGatt(){
-  $('connText').textContent = 'connecting…';
+  $('connText').textContent = 'Connecting…';
   const server = await device.gatt.connect();
   const svc = await server.getPrimaryService(SVC);
   rxChar = await svc.getCharacteristic(RX);
@@ -273,11 +436,13 @@ async function connectGatt(){
   stChar.addEventListener('characteristicvaluechanged', e => onStatus(new TextDecoder().decode(e.target.value)));
   document.body.classList.add('connected');
   $('dot').classList.add('on');
-  $('connText').textContent = device.name || 'charm';
+  $('connText').textContent = device.name || 'Larp Charm';
   $('connectBtn').textContent = 'Disconnect';
+  $('heroConnect').textContent = 'Connected';
   await syncTime();
   await write(packet(CMD.PING));
-  toast('connected ✦');
+  await refreshClips();
+  hud('Connected to ' + (device.name || 'Larp Charm'));
   if (spotifyToken()) startSpotifyLoop();
 }
 
@@ -285,32 +450,62 @@ async function onDisconnected(){
   rxChar = stChar = null;
   document.body.classList.remove('connected');
   $('dot').classList.remove('on');
-  $('connText').textContent = 'offline';
-  $('connectBtn').textContent = 'Connect charm';
+  $('connText').textContent = 'Not connected';
+  $('connectBtn').textContent = 'Connect';
+  $('heroConnect').textContent = 'Connect';
+  $('bat').classList.remove('on');
+  rejectWaiters(new Error('Disconnected'));
   if (manualDisconnect || !device) return;
-  for (let i = 0; i < 5; i++) {                // auto-reconnect when it drifts out of range
-    await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+  for (let i = 0; i < 5; i++) {
+    await sleep(1500 * (i + 1));
     try { await connectGatt(); return; } catch (_) {}
   }
 }
 
-let imgWaiter = null;
+// ─────────── Notifications ───────────
+let ackBytes = 0, ackWaiters = [], xferWaiter = null, listCollect = null;
+function rejectWaiters(err){ ackWaiters.forEach(w => w.reject(err)); ackWaiters = []; if (xferWaiter) { xferWaiter.reject(err); xferWaiter = null; } }
+
 function onStatus(s){
-  const kv = Object.fromEntries(s.split(';').map(p => p.split('=')));
-  if (kv.b) $('bat').textContent = kv.b + '%';
+  if (s.startsWith('ack=')) {
+    ackBytes = +s.slice(4);
+    ackWaiters = ackWaiters.filter(w => { if (ackBytes >= w.n) { w.resolve(); return false; } return true; });
+    return;
+  }
+  if (s.startsWith('item=')) {
+    const p = s.slice(5).split(',');
+    if (listCollect) listCollect.push({ id: +p[0], frames: +p[1], bytes: +p[2], name: p.slice(3).join(',') || 'Clip' });
+    return;
+  }
+  const kv = Object.fromEntries(s.split(';').map(x => { const i = x.indexOf('='); return [x.slice(0, i), x.slice(i + 1)]; }));
+  if (kv.b !== undefined) setBattery(+kv.b, kv.c === '1');
   if (kv.fw) $('fw').textContent = kv.fw;
   if (kv.m !== undefined) setActiveMode(+kv.m);
-  if (kv.img && imgWaiter) { imgWaiter(kv.img); imgWaiter = null; }
+  if (kv.fs) { const [u, t] = kv.fs.split(',').map(Number); state.fsUsed = u; state.fsTotal = t; renderStorage(); }
+  if (kv.clip !== undefined) { state.clipId = +kv.clip; renderClipList(); }
+  if (kv.list === 'end' && listCollect) { state.clips = listCollect; listCollect = null; renderClipList(); }
+  if (kv.xfer && xferWaiter) {
+    const w = xferWaiter; xferWaiter = null;
+    if (kv.xfer === 'ok') w.resolve();
+    else w.reject(new Error({ space: 'Not enough space on the charm. Delete a clip first.', nofs: 'Storage isn’t set up on the charm. Update its firmware.', format: 'The clip didn’t arrive intact. Try again.' }[kv.why] || 'Transfer failed. Try again.'));
+  }
 }
 
-function setActiveMode(m){ document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('active', +b.dataset.m === m)); }
+function setBattery(pct, chg){
+  $('bat').classList.add('on');
+  $('bat').classList.toggle('charging', chg);
+  $('batFill').style.width = Math.max(1, 17 * pct / 100) + 'px';
+  $('batPct').textContent = pct + '%';
+}
+
+function setActiveMode(m){ document.querySelectorAll('#modes .tile').forEach(b => b.classList.toggle('active', +b.dataset.m === m)); }
 
 async function syncTime(){
-  const epoch = Math.floor(Date.now()/1000), tz = -new Date().getTimezoneOffset();
+  const epoch = Math.floor(Date.now() / 1000), tz = -new Date().getTimezoneOffset();
   await write(packet(CMD.TIME, [...u32(epoch), ...i16(tz)]));
 }
 
-// ─────────── Segmented controls ───────────
+// ─────────── Controls ───────────
 function seg(id, onChange){
   const el = $(id); el.value = el.querySelector('.on').dataset.v;
   el.querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -318,123 +513,327 @@ function seg(id, onChange){
     b.classList.add('on'); el.value = b.dataset.v; onChange && onChange(el.value);
   });
 }
+function setSeg(id, v){ const b = $(id).querySelector(`[data-v="${v}"]`); if (b) b.click(); }
 
-// ─────────── Modes ───────────
-document.querySelectorAll('#modes button').forEach(b => b.onclick = () => { write(packet(CMD.MODE, [+b.dataset.m])); setActiveMode(+b.dataset.m); });
+document.querySelectorAll('.swatches').forEach(box => {
+  const target = $(box.dataset.target);
+  const pick = v => { target.value = v; box.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.c === v)); localStorage.setItem('f_' + target.id, v); };
+  box.dataset.colors.split(',').forEach(c => { const b = document.createElement('button'); b.className = 'sw'; b.style.background = c; b.dataset.c = c; b.title = c; b.onclick = () => pick(c); box.appendChild(b); });
+  const custom = document.createElement('label'); custom.className = 'sw-custom'; custom.title = 'Custom colour';
+  const inp = document.createElement('input'); inp.type = 'color'; inp.oninput = () => pick(inp.value); custom.appendChild(inp); box.appendChild(custom);
+  pick(localStorage.getItem('f_' + target.id) || target.value);
+});
+
+function rangeFill(el){ el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min || 1) * 100) + '%'); }
+document.querySelectorAll('input[type=range]').forEach(r => { rangeFill(r); r.addEventListener('input', () => rangeFill(r)); });
+
+document.querySelectorAll('#modes .tile').forEach(b => b.onclick = act(async () => { await write(packet(CMD.MODE, [+b.dataset.m])); setActiveMode(+b.dataset.m); }));
 
 // ─────────── Text ───────────
 seg('txtStyle');
-$('sendTxt').onclick = async () => {
+$('sendTxt').onclick = act(async () => {
   const t = ascii($('txt').value).slice(0, 300);
   await write(packet(CMD.TEXT, [+$('txtStyle').value, ...rgb565($('txtFg').value), ...rgb565($('txtBg').value)], t));
-  setActiveMode(1); toast('text sent');
-};
+  setActiveMode(MODE.TEXT); hud('Message sent');
+});
 
 // ─────────── Images ───────────
 function toRGB565(ctx, w, h){
-  const d = ctx.getImageData(0, 0, w, h).data, out = new Uint8Array(w*h*2);
+  const d = ctx.getImageData(0, 0, w, h).data, out = new Uint8Array(w * h * 2);
   for (let i = 0, j = 0; i < d.length; i += 4, j += 2) {
     const v = ((d[i] & 0xF8) << 8) | ((d[i+1] & 0xFC) << 3) | (d[i+2] >> 3);
-    out[j] = v & 255; out[j+1] = v >> 8;           // little-endian, what the ESP32 expects
+    out[j] = v & 255; out[j+1] = v >> 8;
   }
   return out;
 }
+function srcSize(img){ return [img.displayWidth || img.videoWidth || img.naturalWidth || img.width, img.displayHeight || img.videoHeight || img.naturalHeight || img.height]; }
+function drawFitted(ctx, img, w, h, fit = 'cover', zoom = 1, bg = '#000'){
+  const [iw, ih] = srcSize(img);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  if (!iw || !ih) return;
+  const s = (fit === 'cover' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih)) * zoom;
+  const dw = iw * s, dh = ih * s;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+}
+function loadImage(file){ return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = () => rej(new Error('Couldn’t open that image.')); img.src = URL.createObjectURL(file); }); }
 
-function sendImage(target, bytes, onProgress){
+// Windowed transfer: writes without response, waits for the charm to confirm every WINDOW chunks.
+function waitAck(n, ms = 10000){
+  if (ackBytes >= n) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const w = { n, resolve, reject };
+    ackWaiters.push(w);
+    setTimeout(() => { if (ackWaiters.includes(w)) { ackWaiters = ackWaiters.filter(x => x !== w); reject(new Error('The charm stopped responding. Move closer and try again.')); } }, ms);
+  });
+}
+function sendBlob(kind, bytes, id, onProgress){
   return enqueue(async () => {
     if (!rxChar) throw new Error('not connected');
-    const done = new Promise(res => { imgWaiter = res; setTimeout(() => res('timeout'), 30000); });
-    await rxChar.writeValueWithResponse(packet(CMD.IMG_BEGIN, [target, ...u32(bytes.length)]));
+    ackBytes = 0;
+    const done = new Promise((resolve, reject) => { xferWaiter = { resolve, reject }; });
+    done.catch(() => {});
+    await rxChar.writeValueWithResponse(packet(CMD.XFER_BEGIN, [kind, ...u32(bytes.length), ...u32(id >>> 0)]));
+    await sleep(60);
+    if (!xferWaiter) return done;   // rejected immediately (no space etc.)
+    let noResp = typeof rxChar.writeValueWithoutResponse === 'function';
+    const t0 = performance.now();
+    let n = 0;
     for (let off = 0; off < bytes.length; off += CHUNK) {
+      if (!xferWaiter) return done;
       const part = bytes.subarray(off, off + CHUNK);
-      const pkt = new Uint8Array(part.length + 1); pkt[0] = CMD.IMG_DATA; pkt.set(part, 1);
-      await rxChar.writeValueWithResponse(pkt);
-      onProgress && onProgress(Math.min(1, (off + CHUNK) / bytes.length));
+      const pkt = new Uint8Array(part.length + 1); pkt[0] = CMD.XFER_DATA; pkt.set(part, 1);
+      if (noResp) {
+        try { await rxChar.writeValueWithoutResponse(pkt); }
+        catch (_) { noResp = false; await rxChar.writeValueWithResponse(pkt); }
+      } else await rxChar.writeValueWithResponse(pkt);
+      const sent = Math.min(bytes.length, off + CHUNK);
+      if (++n % WINDOW === 0) await waitAck(sent);
+      if (onProgress) { const el = (performance.now() - t0) / 1000; onProgress(sent / bytes.length, el > 1 ? (bytes.length - sent) / (sent / el) : null); }
     }
-    await rxChar.writeValueWithResponse(Uint8Array.of(CMD.IMG_END));
+    await waitAck(bytes.length);
+    await rxChar.writeValueWithResponse(Uint8Array.of(CMD.XFER_END));
+    setTimeout(() => { if (xferWaiter) { xferWaiter.reject(new Error('No reply from the charm.')); xferWaiter = null; } }, 15000);
     return done;
   });
 }
-
-function loadImage(file){ return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(file); }); }
-
-function drawFitted(ctx, img, w, h, fit='cover', zoom=1, bg='#000'){
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-  const s = (fit === 'cover' ? Math.max(w/img.width, h/img.height) : Math.min(w/img.width, h/img.height)) * zoom;
-  const dw = img.width * s, dh = img.height * s;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, (w-dw)/2, (h-dh)/2, dw, dh);
+function progress(id){
+  const box = $(id), bar = box.querySelector('i'), txt = box.querySelector('p');
+  return {
+    show(msg){ box.classList.add('on'); bar.style.width = '0'; txt.textContent = msg || ''; },
+    set(f, msg){ bar.style.width = (f * 100).toFixed(1) + '%'; if (msg !== undefined) txt.textContent = msg; },
+    hide(delay = 1200){ setTimeout(() => box.classList.remove('on'), delay); }
+  };
 }
 
 // Photo
 let photoImg = null;
 const pctx = $('photoCv').getContext('2d', { willReadFrequently: true });
-function redrawPhoto(){ if (photoImg) drawFitted(pctx, photoImg, 240, 280, $('photoFit').value, $('photoZoom').value/100); }
+function placeholder(ctx, w, h, label){
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#1c1c1e'); g.addColorStop(1, '#2c2c2e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#86868b'; ctx.font = '500 15px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText(label, w / 2, h / 2);
+}
+placeholder(pctx, W, H, 'No photo');
+function redrawPhoto(){ if (photoImg) drawFitted(pctx, photoImg, W, H, $('photoFit').value, $('photoZoom').value / 100); $('zoomVal').textContent = $('photoZoom').value + '%'; }
 seg('photoFit', redrawPhoto);
-$('photoZoom').oninput = redrawPhoto;
-$('photoFile').onchange = async e => { if (!e.target.files[0]) return; photoImg = await loadImage(e.target.files[0]); redrawPhoto(); $('sendPhoto').disabled = false; };
-$('sendPhoto').onclick = async () => {
-  const bar = $('photoProg'); bar.style.display = 'block'; $('sendPhoto').disabled = true;
+$('photoZoom').addEventListener('input', redrawPhoto);
+$('photoFile').onchange = act(async e => { if (!e.target.files[0]) return; photoImg = await loadImage(e.target.files[0]); redrawPhoto(); $('sendPhoto').disabled = false; });
+$('sendPhoto').onclick = act(async () => {
+  const pr = progress('photoProg'); pr.show('Sending…'); $('sendPhoto').disabled = true;
   try {
-    const r = await sendImage(0, toRGB565(pctx, 240, 280), p => bar.firstElementChild.style.width = (p*100) + '%');
-    toast(r === 'ok' ? 'photo saved on charm' : 'photo failed — try again');
-    if (r === 'ok') setActiveMode(2);
-  } catch (e) { toast(e.message); }
-  $('sendPhoto').disabled = false; setTimeout(() => bar.style.display = 'none', 800);
-};
+    await sendBlob(0, toRGB565(pctx, W, H), 0, (f, eta) => pr.set(f, eta != null ? `Sending… ${fmtTime(eta)} left` : 'Sending…'));
+    pr.set(1, 'Saved on your charm.'); setActiveMode(MODE.PHOTO);
+  } catch (e) { pr.set(0, e.message); throw e; }
+  finally { $('sendPhoto').disabled = false; pr.hide(2500); }
+});
+
+// ─────────── Clips (GIF / video → MJPEG) ───────────
+const cctx = $('clipCv').getContext('2d', { willReadFrequently: true });
+placeholder(cctx, W, H, 'No clip selected');
+let clipSrc = null;   // { kind:'gif'|'video'|'image', file, video?, decoder?, frameCount?, duration? }
+let previewTimer = null;
+seg('clipFit', () => { drawClipPreview(); estimateClip(); });
+seg('clipFps', estimateClip);
+seg('clipQ', estimateClip);
+
+function clipOpts(){
+  return { fit: $('clipFit').value, q: +$('clipQ').value, fps: +$('clipFps').value, start: +$('clipStart').value, len: +$('clipLen').value };
+}
+
+async function jpegBlob(canvas, q){ return new Promise(r => canvas.toBlob(r, 'image/jpeg', q)); }
+
+$('clipFile').onchange = act(async e => {
+  const file = e.target.files[0]; if (!file) return;
+  clearInterval(previewTimer);
+  if (clipSrc && clipSrc.decoder) clipSrc.decoder.close();
+  clipSrc = null;
+  $('sendClip').disabled = true;
+  $('clipName').value = file.name.replace(/\.[^.]+$/, '').slice(0, 20);
+  if (file.type === 'image/gif' || /\.gif$/i.test(file.name)) {
+    if (!('ImageDecoder' in window)) throw new Error('This browser can’t read GIF frames. Use Chrome.');
+    const decoder = new ImageDecoder({ data: await file.arrayBuffer(), type: 'image/gif' });
+    await decoder.tracks.ready;
+    await decoder.completed;
+    const frameCount = decoder.tracks.selectedTrack.frameCount;
+    let duration = 0;
+    for (let i = 0; i < Math.min(frameCount, 400); i++) { const { image } = await decoder.decode({ frameIndex: i }); duration += (image.duration || 100000) / 1e6; image.close(); }
+    if (frameCount > 400) duration *= frameCount / 400;
+    clipSrc = { kind: 'gif', file, decoder, frameCount, duration };
+    $('videoOpts').classList.add('hidden');
+    $('clipInfo').textContent = `GIF · ${frameCount} frames · ${duration.toFixed(1)} s`;
+    let fi = 0;
+    previewTimer = setInterval(async () => { if (!clipSrc || clipSrc.kind !== 'gif') return; const { image } = await decoder.decode({ frameIndex: fi }); drawFitted(cctx, image, W, H, $('clipFit').value); image.close(); fi = (fi + 1) % frameCount; }, 80);
+  } else if (file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name)) {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(file);
+    await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('Couldn’t open that video. Try an MP4.')); });
+    clipSrc = { kind: 'video', file, video: v, duration: v.duration };
+    $('videoOpts').classList.remove('hidden');
+    $('clipStart').max = Math.max(0, v.duration - 1).toFixed(1); $('clipStart').value = 0;
+    $('clipLen').max = Math.max(1, Math.min(60, Math.floor(v.duration))); $('clipLen').value = Math.min(10, $('clipLen').max);
+    [$('clipStart'), $('clipLen')].forEach(rangeFill);
+    $('clipInfo').textContent = `Video · ${fmtTime(v.duration)} · ${v.videoWidth}×${v.videoHeight}`;
+    updateVideoLabels();
+    await seekVideo(v, 0); drawClipPreview();
+  } else throw new Error('Choose a GIF or a video file.');
+  $('sendClip').disabled = false;
+  estimateClip();
+});
+
+function seekVideo(v, t){ return new Promise(res => { if (Math.abs(v.currentTime - t) < 0.001 && v.readyState >= 2) return res(); const h = () => { v.removeEventListener('seeked', h); res(); }; v.addEventListener('seeked', h); v.currentTime = t; }); }
+function updateVideoLabels(){ const s = +$('clipStart').value; $('startVal').textContent = Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); $('lenVal').textContent = $('clipLen').value + ' s'; }
+$('clipStart').addEventListener('input', act(async () => { updateVideoLabels(); if (clipSrc && clipSrc.kind === 'video') { await seekVideo(clipSrc.video, +$('clipStart').value); drawClipPreview(); } estimateClip(); }));
+$('clipLen').addEventListener('input', () => { updateVideoLabels(); estimateClip(); });
+
+function drawClipPreview(){ if (clipSrc && clipSrc.kind === 'video') drawFitted(cctx, clipSrc.video, W, H, $('clipFit').value); }
+
+let estToken = 0;
+async function estimateClip(){
+  if (!clipSrc) return;
+  const tok = ++estToken, o = clipOpts();
+  const frames = clipSrc.kind === 'gif' ? clipSrc.frameCount : Math.max(1, Math.round(Math.min(o.len, clipSrc.duration - o.start) * o.fps));
+  const sample = await jpegBlob($('clipCv'), o.q);
+  if (tok !== estToken) return;
+  const bytes = frames * (sample.size * 1.08 + 6) + 38;
+  const free = state.fsTotal ? state.fsTotal - state.fsUsed : 0;
+  let msg = `About ${fmtBytes(bytes)} · ${frames} frames · roughly ${fmtTime(bytes / 30000)} to send.`;
+  if (free && bytes > free - 65536) msg += ` That’s more than the ${fmtBytes(free)} free. Shorten it or delete a clip.`;
+  $('clipEstimate').textContent = msg;
+}
+
+async function buildClip(onProgress){
+  const o = clipOpts(), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const frames = [];
+  if (clipSrc.kind === 'gif') {
+    const d = clipSrc.decoder, n = Math.min(clipSrc.frameCount, 1500);
+    for (let i = 0; i < n; i++) {
+      const { image } = await d.decode({ frameIndex: i });
+      drawFitted(ctx, image, W, H, o.fit);
+      const delay = Math.max(20, Math.min(10000, Math.round((image.duration || 100000) / 1000)));
+      image.close();
+      frames.push({ data: new Uint8Array(await (await jpegBlob(cv, o.q)).arrayBuffer()), delay });
+      onProgress(i + 1, n);
+    }
+  } else {
+    const v = clipSrc.video, len = Math.min(o.len, v.duration - o.start), n = Math.max(1, Math.round(len * o.fps)), delay = Math.round(1000 / o.fps);
+    for (let i = 0; i < n; i++) {
+      await seekVideo(v, Math.min(v.duration - 0.01, o.start + i / o.fps));
+      drawFitted(ctx, v, W, H, o.fit);
+      frames.push({ data: new Uint8Array(await (await jpegBlob(cv, o.q)).arrayBuffer()), delay });
+      onProgress(i + 1, n);
+    }
+    await seekVideo(v, o.start); drawClipPreview();
+  }
+  // header: "LCLP" ver flags w h frames name[24]
+  const total = 38 + frames.reduce((s, f) => s + 6 + f.data.length, 0);
+  const out = new Uint8Array(total), dv = new DataView(out.buffer);
+  out.set(enc.encode('LCLP'), 0); out[4] = 1; out[5] = 0;
+  dv.setUint16(6, W, true); dv.setUint16(8, H, true); dv.setUint32(10, frames.length, true);
+  const name = enc.encode(ascii($('clipName').value || 'Clip').replace(/[;,]/g, ' ').slice(0, 23));
+  out.set(name, 14);
+  let off = 38;
+  for (const f of frames) { dv.setUint32(off, f.data.length, true); dv.setUint16(off + 4, f.delay, true); out.set(f.data, off + 6); off += 6 + f.data.length; }
+  return out;
+}
+
+$('sendClip').onclick = act(async () => {
+  if (!clipSrc) return;
+  if (!rxChar) throw new Error('not connected');
+  const pr = progress('clipProg'); pr.show('Preparing frames…');
+  $('sendClip').disabled = true; clearInterval(previewTimer);
+  try {
+    const bytes = await buildClip((i, n) => pr.set(i / n * 0.25, `Preparing frames ${i} of ${n}…`));
+    const free = state.fsTotal - state.fsUsed;
+    if (state.fsTotal && bytes.length > free - 65536) throw new Error(`This clip is ${fmtBytes(bytes.length)} but only ${fmtBytes(free)} is free. Shorten it or delete a clip.`);
+    const id = Math.floor(Date.now() / 1000);
+    await sendBlob(2, bytes, id, (f, eta) => pr.set(0.25 + f * 0.75, `Sending ${Math.round(f * 100)}%` + (eta != null ? ` · ${fmtTime(eta)} left` : '')));
+    pr.set(1, 'Playing on your charm.');
+    setActiveMode(MODE.CLIP);
+    await refreshClips();
+  } catch (e) { pr.set(0, e.message); throw e; }
+  finally { $('sendClip').disabled = false; pr.hide(3000); if (clipSrc && clipSrc.kind === 'gif') { let fi = 0; previewTimer = setInterval(async () => { if (!clipSrc || clipSrc.kind !== 'gif') return; const { image } = await clipSrc.decoder.decode({ frameIndex: fi }); drawFitted(cctx, image, W, H, $('clipFit').value); image.close(); fi = (fi + 1) % clipSrc.frameCount; }, 80); } }
+});
+
+async function refreshClips(){
+  if (!rxChar) return;
+  listCollect = [];
+  await write(packet(CMD.CLIP_LIST));
+}
+$('refreshClips').onclick = act(refreshClips);
+
+function renderClipList(){
+  const ul = $('clipList'); ul.innerHTML = '';
+  if (!rxChar) { ul.innerHTML = '<li class="empty">Connect to see your saved clips.</li>'; return; }
+  if (!state.clips.length) { ul.innerHTML = '<li class="empty">No clips yet. Send a GIF or video above.</li>'; return; }
+  for (const c of state.clips) {
+    const li = document.createElement('li');
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const b = document.createElement('b'); b.textContent = c.name;
+    const sp = document.createElement('span'); sp.textContent = `${c.frames} frames · ${fmtBytes(c.bytes)}`;
+    meta.append(b, sp);
+    li.append(meta);
+    if (c.id === state.clipId) { const now = document.createElement('span'); now.className = 'now'; now.textContent = 'Now showing'; li.append(now); }
+    else { const play = document.createElement('button'); play.className = 'btn sm'; play.textContent = 'Play'; play.onclick = act(async () => { await write(packet(CMD.CLIP_PLAY, u32(c.id))); setActiveMode(MODE.CLIP); }); li.append(play); }
+    const del = document.createElement('button'); del.className = 'btn sm grey'; del.textContent = 'Delete';
+    del.onclick = act(async () => { if (!confirm(`Delete “${c.name}” from your charm?`)) return; listCollect = []; await write(packet(CMD.CLIP_DELETE, u32(c.id))); });
+    li.append(del);
+    ul.append(li);
+  }
+}
+function renderStorage(){
+  if (!state.fsTotal) return;
+  $('storageText').textContent = `${fmtBytes(state.fsUsed)} of ${fmtBytes(state.fsTotal)} used`;
+  $('storageFree').textContent = `${fmtBytes(state.fsTotal - state.fsUsed)} free`;
+  $('storageFill').style.width = (state.fsUsed / state.fsTotal * 100).toFixed(1) + '%';
+}
 
 // ─────────── Music ───────────
-seg('musicSrc', v => { $('spotifyBox').style.display = v === 'spotify' ? '' : 'none'; $('manualBox').style.display = v === 'manual' ? '' : 'none'; });
-
+seg('musicSrc', v => { $('spotifyBox').classList.toggle('hidden', v !== 'spotify'); $('manualBox').classList.toggle('hidden', v !== 'manual'); });
 function nowPlayingPacket(rgb, playing, posMs, durMs, title, artist){
-  return packet(CMD.NOWPLAYING, [...rgb, playing ? 1 : 0, ...u32(posMs), ...u32(durMs)], ascii(title).slice(0,80) + '\x1F' + ascii(artist).slice(0,60));
+  return packet(CMD.NOWPLAYING, [...rgb, playing ? 1 : 0, ...u32(posMs), ...u32(durMs)], ascii(title).slice(0, 80) + '\x1F' + ascii(artist).slice(0, 60));
 }
-
-function vibeColor(ctx, w, h){          // saturated average = album "vibe" colour
-  const d = ctx.getImageData(0, 0, w, h).data; let r=0,g=0,b=0,t=0;
+function vibeColor(ctx, w, h){
+  const d = ctx.getImageData(0, 0, w, h).data; let r = 0, g = 0, b = 0, t = 0;
   for (let i = 0; i < d.length; i += 16) {
-    const R=d[i],G=d[i+1],B=d[i+2], mx=Math.max(R,G,B), mn=Math.min(R,G,B), sat = mx ? (mx-mn)/mx : 0;
-    const wgt = 0.05 + sat*sat*(mx/255);
-    r+=R*wgt; g+=G*wgt; b+=B*wgt; t+=wgt;
+    const R = d[i], G = d[i+1], B = d[i+2], mx = Math.max(R, G, B), mn = Math.min(R, G, B), sat = mx ? (mx - mn) / mx : 0;
+    const wgt = 0.05 + sat * sat * (mx / 255);
+    r += R * wgt; g += G * wgt; b += B * wgt; t += wgt;
   }
-  let c = [r/t, g/t, b/t]; const mx = Math.max(...c) || 1;
-  return c.map(v => Math.round(Math.min(255, v * (220/mx))));   // brighten so it glows on screen
+  const c = [r / t, g / t, b / t], mx = Math.max(...c) || 1;
+  return c.map(v => Math.round(Math.min(255, v * (220 / mx))));
 }
-
 const actx = $('artCv').getContext('2d', { willReadFrequently: true });
 let manualArt = null;
-$('mArtFile').onchange = async e => { if (!e.target.files[0]) return; manualArt = await loadImage(e.target.files[0]); drawFitted(actx, manualArt, 120, 120); $('mColor').value = '#' + vibeColor(actx,120,120).map(v=>v.toString(16).padStart(2,'0')).join(''); };
-$('sendMusic').onclick = async () => {
-  const [m, s] = ($('mLen').value.split(':').map(Number));
-  const dur = ((m||0)*60 + (s||0)) * 1000;
-  await write(nowPlayingPacket(hexRgb($('mColor').value), $('mPlaying').checked, 0, dur, $('mTitle').value || 'untitled', $('mArtist').value));
-  if (manualArt) await sendImage(1, toRGB565(actx, 120, 120));
-  await write(packet(CMD.MODE, [3])); setActiveMode(3); toast('now playing sent');
-};
+$('mArtFile').onchange = act(async e => { if (!e.target.files[0]) return; manualArt = await loadImage(e.target.files[0]); drawFitted(actx, manualArt, 120, 120); $('mColor').value = '#' + vibeColor(actx, 120, 120).map(v => v.toString(16).padStart(2, '0')).join(''); hud('Album art ready'); });
+$('sendMusic').onclick = act(async () => {
+  const [m, s] = $('mLen').value.split(':').map(Number);
+  const dur = ((m || 0) * 60 + (s || 0)) * 1000;
+  await write(nowPlayingPacket(hexRgb($('mColor').value), $('mPlaying').checked, 0, dur, $('mTitle').value || 'Untitled', $('mArtist').value));
+  if (manualArt) await sendBlob(1, toRGB565(actx, 120, 120), 0);
+  await write(packet(CMD.MODE, [MODE.MUSIC])); setActiveMode(MODE.MUSIC); hud('Now playing sent');
+});
 
-// Spotify (Authorization Code + PKCE — no server needed)
 const REDIRECT = location.origin + location.pathname;
 $('redirUri').textContent = REDIRECT;
 $('spClient').value = localStorage.getItem('sp_client') || '';
 $('spClient').onchange = () => localStorage.setItem('sp_client', $('spClient').value.trim());
-
-const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 function spotifyToken(){ return localStorage.getItem('sp_access'); }
-
-$('spLogin').onclick = async () => {
-  const client = $('spClient').value.trim(); if (!client) return toast('paste your Client ID first');
+$('spLogin').onclick = act(async () => {
+  const client = $('spClient').value.trim(); if (!client) throw new Error('Paste your Spotify Client ID first.');
   localStorage.setItem('sp_client', client);
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
   localStorage.setItem('sp_verifier', verifier);
   const challenge = b64url(await crypto.subtle.digest('SHA-256', enc.encode(verifier)));
-  const q = new URLSearchParams({ response_type:'code', client_id:client, redirect_uri:REDIRECT, scope:'user-read-currently-playing user-read-playback-state', code_challenge_method:'S256', code_challenge:challenge });
+  const q = new URLSearchParams({ response_type: 'code', client_id: client, redirect_uri: REDIRECT, scope: 'user-read-currently-playing user-read-playback-state', code_challenge_method: 'S256', code_challenge: challenge });
   location.href = 'https://accounts.spotify.com/authorize?' + q;
-};
-$('spLogout').onclick = () => { ['sp_access','sp_refresh','sp_exp'].forEach(k => localStorage.removeItem(k)); $('spNow').style.display='none'; toast('logged out'); };
-
+});
+$('spLogout').onclick = () => { ['sp_access', 'sp_refresh', 'sp_exp'].forEach(k => localStorage.removeItem(k)); $('spNow').style.display = 'none'; hud('Signed out of Spotify'); };
 async function tokenRequest(params){
-  const r = await fetch('https://accounts.spotify.com/api/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams(params) });
-  const j = await r.json(); if (!r.ok) throw new Error(j.error_description || 'spotify auth failed');
+  const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error_description || 'Spotify sign-in failed');
   localStorage.setItem('sp_access', j.access_token);
   if (j.refresh_token) localStorage.setItem('sp_refresh', j.refresh_token);
   localStorage.setItem('sp_exp', Date.now() + (j.expires_in - 60) * 1000);
@@ -442,83 +841,98 @@ async function tokenRequest(params){
 async function ensureToken(){
   if (Date.now() < +localStorage.getItem('sp_exp')) return true;
   const rt = localStorage.getItem('sp_refresh'); if (!rt) return false;
-  await tokenRequest({ grant_type:'refresh_token', refresh_token:rt, client_id:localStorage.getItem('sp_client') });
+  await tokenRequest({ grant_type: 'refresh_token', refresh_token: rt, client_id: localStorage.getItem('sp_client') });
   return true;
 }
-(async () => {            // returning from Spotify login
+(async () => {
   const code = new URLSearchParams(location.search).get('code');
   if (!code) return;
   try {
-    await tokenRequest({ grant_type:'authorization_code', code, redirect_uri:REDIRECT, client_id:localStorage.getItem('sp_client'), code_verifier:localStorage.getItem('sp_verifier') });
-    toast('Spotify connected — now connect the charm');
-  } catch (e) { toast(e.message); }
+    await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT, client_id: localStorage.getItem('sp_client'), code_verifier: localStorage.getItem('sp_verifier') });
+    hud('Spotify connected. Now connect your charm.');
+  } catch (e) { hud(e.message); }
   history.replaceState(null, '', REDIRECT);
 })();
-
 let spTimer = null, lastTrack = null, lastPlaying = null, lastSent = 0;
 function startSpotifyLoop(){ clearInterval(spTimer); spTimer = setInterval(pollSpotify, 5000); pollSpotify(); }
 async function pollSpotify(){
   if (!$('spLive').checked || !rxChar || document.hidden) return;
   try {
     if (!(await ensureToken())) return;
-    const r = await fetch('https://api.spotify.com/v1/me/player/currently-playing', { headers:{ Authorization:'Bearer ' + spotifyToken() } });
-    if (r.status === 204) return;                     // nothing playing
+    const r = await fetch('https://api.spotify.com/v1/me/player/currently-playing', { headers: { Authorization: 'Bearer ' + spotifyToken() } });
+    if (r.status === 204) return;
     if (r.status === 401) { localStorage.setItem('sp_exp', 0); return; }
     const j = await r.json(); const it = j.item; if (!it) return;
     const title = it.name, artist = (it.artists || []).map(a => a.name).join(', ');
     const changed = it.id !== lastTrack;
     if (!changed && j.is_playing === lastPlaying && Date.now() - lastSent < 20000) return;
-
-    let rgb = [244,114,182];
-    const artUrl = it.album && it.album.images && (it.album.images.find(i => i.width <= 320) || it.album.images[0]);
-    let artBytes = null;
-    if (artUrl) {
+    let rgb = [244, 114, 182], artBytes = null;
+    const art = it.album && it.album.images && (it.album.images.find(i => i.width <= 320) || it.album.images[0]);
+    if (art) {
       try {
         const img = new Image(); img.crossOrigin = 'anonymous';
-        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = artUrl.url; });
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = art.url; });
         drawFitted(actx, img, 120, 120);
         rgb = vibeColor(actx, 120, 120);
         if (changed) artBytes = toRGB565(actx, 120, 120);
-        $('spArt').src = artUrl.url;
+        $('spArt').src = art.url;
       } catch (_) {}
     }
     await write(nowPlayingPacket(rgb, j.is_playing, j.progress_ms || 0, it.duration_ms || 0, title, artist));
-    if (artBytes) await sendImage(1, artBytes);
+    if (artBytes) await sendBlob(1, artBytes, 0);
     lastTrack = it.id; lastPlaying = j.is_playing; lastSent = Date.now();
     $('spNow').style.display = 'flex'; $('spTitle').textContent = title; $('spArtist').textContent = artist;
   } catch (e) { console.warn(e); }
 }
 
-// ─────────── Pet / Card ───────────
-$('sendPet').onclick = async () => { await write(packet(CMD.PET, [+$('petSp').value, ...hexRgb($('petCol').value)], ascii($('petName').value).slice(0,12))); setActiveMode(4); toast('pet updated'); };
-$('feedPet').onclick = async () => { await write(packet(CMD.FEED)); setActiveMode(4); toast('nom nom'); };
-$('sendCard').onclick = async () => { await write(packet(CMD.CARD, hexRgb($('cAcc').value), ascii($('cName').value).slice(0,20) + '\x1F' + ascii($('cSub').value).slice(0,24))); setActiveMode(5); toast('card sent'); };
+// ─────────── Pet / Card / NFC ───────────
+seg('petSp');
+$('sendPet').onclick = act(async () => { await write(packet(CMD.PET, [+$('petSp').value, ...hexRgb($('petCol').value)], ascii($('petName').value).slice(0, 12))); setActiveMode(MODE.PET); hud('Pet updated'); });
+$('feedPet').onclick = act(async () => { await write(packet(CMD.FEED)); setActiveMode(MODE.PET); hud('Fed'); });
+$('sendCard').onclick = act(async () => { await write(packet(CMD.CARD, hexRgb($('cAcc').value), ascii($('cName').value).slice(0, 20) + '\x1F' + ascii($('cSub').value).slice(0, 24))); setActiveMode(MODE.CARD); hud('Card shown'); });
 
-// ─────────── NFC (Web NFC, Chrome Android) ───────────
 $('nfcUrl').value = localStorage.getItem('nfc_url') || '';
-$('writeNfc').onclick = async () => {
-  if (!('NDEFReader' in window)) return toast('Web NFC needs Chrome on Android');
-  const url = $('nfcUrl').value.trim(); if (!/^https?:\/\//.test(url)) return toast('enter a full https:// link');
+$('writeNfc').onclick = act(async () => {
+  if (!('NDEFReader' in window)) throw new Error('NFC writing needs Chrome on Android.');
+  const url = $('nfcUrl').value.trim(); if (!/^https?:\/\//.test(url)) throw new Error('Enter a full link starting with https://');
   localStorage.setItem('nfc_url', url);
-  try { toast('hold the tag to your phone…'); await new NDEFReader().write({ records:[{ recordType:'url', data:url }] }); toast('tag written ✦'); }
-  catch (e) { toast(e.message); }
-};
+  hud('Hold the tag to the back of your phone…');
+  await new NDEFReader().write({ records: [{ recordType: 'url', data: url }] });
+  hud('Tag written');
+});
 
 // ─────────── Settings ───────────
 let brightT;
-$('bright').oninput = () => { clearTimeout(brightT); brightT = setTimeout(() => write(packet(CMD.BRIGHT, [+$('bright').value])), 120); };
-const sendSettings = () => write(packet(CMD.SETTINGS, [...i16(+$('sleep').value), $('swap').checked ? 1 : 0]));
+function brightLabel(){ $('brightVal').textContent = Math.round($('bright').value / 255 * 100) + '%'; }
+brightLabel();
+$('bright').addEventListener('input', () => { brightLabel(); clearTimeout(brightT); brightT = setTimeout(() => write(packet(CMD.BRIGHT, [+$('bright').value])).catch(() => {}), 120); });
+const sendSettings = act(async () => { await write(packet(CMD.SETTINGS, [...i16(+$('sleep').value), $('swap').checked ? 1 : 0])); hud('Saved'); });
 $('sleep').onchange = sendSettings; $('swap').onchange = sendSettings;
-$('syncTime').onclick = async () => { await syncTime(); toast('time synced'); };
-$('findMe').onclick = () => write(packet(CMD.BUZZ, [5]));
+$('syncTime').onclick = act(async () => { await syncTime(); hud('Time synced'); });
+$('findMe').onclick = act(() => write(packet(CMD.BUZZ, [5])));
 
-// remember form values between visits
-['txt','txtFg','txtBg','mTitle','mArtist','petName','petCol','cName','cSub','cAcc'].forEach(id => {
+// ─────────── Hero preview ───────────
+const hctx = $('heroCv').getContext('2d');
+function drawHero(){
+  const g = hctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2e1065'); g.addColorStop(1, '#0c4a6e');
+  hctx.fillStyle = g; hctx.fillRect(0, 0, W, H);
+  const d = new Date();
+  const ff = getComputedStyle(document.body).fontFamily;
+  hctx.textAlign = 'center'; hctx.fillStyle = '#fff';
+  hctx.font = '600 64px ' + ff;
+  hctx.fillText(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'), W / 2, 140);
+  hctx.fillStyle = '#7dd3fc'; hctx.font = '500 16px ' + ff;
+  hctx.fillText(d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase(), W / 2, 172);
+  hctx.fillStyle = 'rgba(255,255,255,.25)'; hctx.fillRect(40, 214, 160, 6);
+  hctx.fillStyle = '#f472b6'; hctx.fillRect(40, 214, 160 * d.getSeconds() / 59, 6);
+}
+drawHero(); setInterval(drawHero, 1000);
+
+// ─────────── Remember inputs ───────────
+['txt', 'mTitle', 'mArtist', 'petName', 'cName', 'cSub', 'clipName'].forEach(id => {
   const el = $(id), v = localStorage.getItem('f_' + id); if (v !== null) el.value = v;
   el.addEventListener('change', () => localStorage.setItem('f_' + id, el.value));
 });
-const sp = localStorage.getItem('f_petSp'); if (sp) $('petSp').value = sp;
-$('petSp').onchange = () => localStorage.setItem('f_petSp', $('petSp').value);
 </script>
 </body>
 </html>
