@@ -1,10 +1,11 @@
-// ─────────── Protocol (must match firmware 2.x) ───────────
+// ─────────── Protocol (must match firmware 4.x) ───────────
 const SVC = '6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const RX  = '6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const ST  = '6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee';
-const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, CLIP_LIST:15, CLIP_PLAY:16, CLIP_DELETE:17, LOOK:18, TIMER:19, TOY:20};
-const MODE = {CLOCK:0, TEXT:1, PHOTO:2, CLIP:3, MUSIC:4, PET:5, TOY:6, CARD:7};
-const ui = window.ui = { mode: 0, bg: 0, face: 0, toy: 0 };
+const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, CLIP_LIST:15, CLIP_PLAY:16, CLIP_DELETE:17, LOOK:18, TIMER:19, TOY:20, THEME:21};
+const MODE = {CLOCK:0, TEXT:1, PHOTO:2, CLIP:3, MUSIC:4, PET:5, TOY:6, CARD:7, DECK:8};
+const THEMES = ['#00E5FF', '#FF2BD6', '#FFB000', '#39FF14', '#FF3B30', '#C8DCFF'];
+const ui = window.ui = { mode: 8, bg: 9, face: 0, toy: 0, theme: 0, playing: false, artReady: false };
 const CHUNK = 495, WINDOW = 16;
 const W = 240, H = 280;
 
@@ -14,7 +15,7 @@ let device = null, rxChar = null, stChar = null, manualDisconnect = false;
 let queue = Promise.resolve();
 let state = { fsUsed: 0, fsTotal: 0, clipId: 0, clips: [] };
 
-function hud(msg){ const t = $('hud'); t.textContent = msg; t.classList.add('on'); if (window.kickCharm) kickCharm(0.5); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200); }
+function hud(msg){ const t = $('hud'); t.textContent = msg; t.classList.add('on'); if (window.kickCharm) kickCharm(3); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200); }
 const act = fn => async (...a) => { try { await fn(...a); } catch (e) { hud(e.message === 'not connected' ? 'Connect your Larp Charm first.' : e.message); } };
 
 function enqueue(fn){ const p = queue.then(fn); queue = p.catch(() => {}); return p; }
@@ -91,6 +92,7 @@ function onStatus(s){
     ackWaiters = ackWaiters.filter(w => { if (ackBytes >= w.n) { w.resolve(); return false; } return true; });
     return;
   }
+  if (s.startsWith('media=')) { mediaControl(s.slice(6)); return; }
   if (s.startsWith('item=')) {
     const p = s.slice(5).split(',');
     if (listCollect) listCollect.push({ id: +p[0], frames: +p[1], bytes: +p[2], name: p.slice(3).join(',') || 'Clip' });
@@ -102,6 +104,7 @@ function onStatus(s){
   if (kv.m !== undefined) setActiveMode(+kv.m);
   if (kv.lk) { const [b, f] = kv.lk.split(',').map(Number); setLook(b, f, false); }
   if (kv.toy !== undefined) setToy(+kv.toy, false);
+  if (kv.th !== undefined) setTheme(+kv.th, false);
   if (kv.imu !== undefined) $('imuNote').classList.toggle('hidden', kv.imu === '1');
   if (kv.fs) { const [u, t] = kv.fs.split(',').map(Number); state.fsUsed = u; state.fsTotal = t; renderStorage(); }
   if (kv.clip !== undefined) { state.clipId = +kv.clip; renderClipList(); }
@@ -149,7 +152,9 @@ document.querySelectorAll('.swatches').forEach(box => {
 function rangeFill(el){ el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min || 1) * 100) + '%'); }
 document.querySelectorAll('input[type=range]').forEach(r => { rangeFill(r); r.addEventListener('input', () => rangeFill(r)); });
 
-document.querySelectorAll('#modes .tile').forEach(b => b.onclick = () => { setActiveMode(+b.dataset.m); if (rxChar) write(packet(CMD.MODE, [+b.dataset.m])).catch(() => {}); });
+const gotoMode = window.charmGoto = m => { setActiveMode(m); if (window.kickCharm) kickCharm(3); if (rxChar) write(packet(CMD.MODE, [m])).catch(() => {}); };
+document.querySelectorAll('#modes .tile').forEach(b => b.onclick = () => gotoMode(+b.dataset.m));
+setActiveMode(ui.mode);
 
 // ─────────── Text ───────────
 seg('txtStyle');
@@ -232,9 +237,9 @@ function progress(id){
 let photoImg = null;
 const pctx = $('photoCv').getContext('2d', { willReadFrequently: true });
 function placeholder(ctx, w, h, label){
-  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#1c1c1e'); g.addColorStop(1, '#2c2c2e');
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0E0726'); g.addColorStop(1, '#21134F');
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#86868b'; ctx.font = '500 15px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText(label, w / 2, h / 2);
+  ctx.fillStyle = '#A99BDB'; ctx.font = '500 15px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText(label, w / 2, h / 2);
 }
 placeholder(pctx, W, H, 'No photo');
 function redrawPhoto(){ if (photoImg) drawFitted(pctx, photoImg, W, H, $('photoFit').value, $('photoZoom').value / 100); $('zoomVal').textContent = $('photoZoom').value + '%'; }
@@ -428,12 +433,16 @@ function vibeColor(ctx, w, h){
 }
 const actx = $('artCv').getContext('2d', { willReadFrequently: true });
 let manualArt = null;
-$('mArtFile').onchange = act(async e => { if (!e.target.files[0]) return; manualArt = await loadImage(e.target.files[0]); drawFitted(actx, manualArt, 120, 120); $('mColor').value = '#' + vibeColor(actx, 120, 120).map(v => v.toString(16).padStart(2, '0')).join(''); hud('Album art ready'); });
+// The cover is cropped to the whole 240×280 screen and sent as one small JPEG.
+async function artJpeg(){ return new Uint8Array(await (await jpegBlob($('artCv'), 0.82)).arrayBuffer()); }
+const toHex = rgb => '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+$('mArtFile').onchange = act(async e => { if (!e.target.files[0]) return; manualArt = await loadImage(e.target.files[0]); drawFitted(actx, manualArt, W, H); ui.artReady = true; $('mColor').value = toHex(vibeColor(actx, W, H)); hud('Album art ready'); });
 $('sendMusic').onclick = act(async () => {
   const [m, s] = $('mLen').value.split(':').map(Number);
   const dur = ((m || 0) * 60 + (s || 0)) * 1000;
   await write(nowPlayingPacket(hexRgb($('mColor').value), $('mPlaying').checked, 0, dur, $('mTitle').value || 'Untitled', $('mArtist').value));
-  if (manualArt) await sendBlob(1, toRGB565(actx, 120, 120), 0);
+  ui.playing = $('mPlaying').checked;
+  if (manualArt) { drawFitted(actx, manualArt, W, H); ui.artReady = true; await sendBlob(3, await artJpeg(), 0); }
   await write(packet(CMD.MODE, [MODE.MUSIC])); setActiveMode(MODE.MUSIC); hud('Now playing sent');
 });
 
@@ -449,7 +458,7 @@ $('spLogin').onclick = act(async () => {
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
   localStorage.setItem('sp_verifier', verifier);
   const challenge = b64url(await crypto.subtle.digest('SHA-256', enc.encode(verifier)));
-  const q = new URLSearchParams({ response_type: 'code', client_id: client, redirect_uri: REDIRECT, scope: 'user-read-currently-playing user-read-playback-state', code_challenge_method: 'S256', code_challenge: challenge });
+  const q = new URLSearchParams({ response_type: 'code', client_id: client, redirect_uri: REDIRECT, scope: 'user-read-currently-playing user-read-playback-state user-modify-playback-state', code_challenge_method: 'S256', code_challenge: challenge });
   location.href = 'https://accounts.spotify.com/authorize?' + q;
 });
 $('spLogout').onclick = () => { ['sp_access', 'sp_refresh', 'sp_exp'].forEach(k => localStorage.removeItem(k)); $('spNow').style.display = 'none'; hud('Signed out of Spotify'); };
@@ -489,21 +498,47 @@ async function pollSpotify(){
     const changed = it.id !== lastTrack;
     if (!changed && j.is_playing === lastPlaying && Date.now() - lastSent < 20000) return;
     let rgb = [244, 114, 182], artBytes = null;
-    const art = it.album && it.album.images && (it.album.images.find(i => i.width <= 320) || it.album.images[0]);
+    const art = it.album && it.album.images && (it.album.images.find(i => i.width <= 640) || it.album.images[0]);
     if (art) {
       try {
         const img = new Image(); img.crossOrigin = 'anonymous';
         await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = art.url; });
-        drawFitted(actx, img, 120, 120);
-        rgb = vibeColor(actx, 120, 120);
-        if (changed) artBytes = toRGB565(actx, 120, 120);
+        drawFitted(actx, img, W, H);
+        ui.artReady = true;
+        rgb = vibeColor(actx, W, H);
+        $('mColor').value = toHex(rgb);
+        if (changed) artBytes = await artJpeg();
         $('spArt').src = art.url;
       } catch (_) {}
     }
     await write(nowPlayingPacket(rgb, j.is_playing, j.progress_ms || 0, it.duration_ms || 0, title, artist));
-    if (artBytes) await sendBlob(1, artBytes, 0);
-    lastTrack = it.id; lastPlaying = j.is_playing; lastSent = Date.now();
+    if (artBytes) await sendBlob(3, artBytes, 0);
+    lastTrack = it.id; lastPlaying = j.is_playing; lastSent = Date.now(); ui.playing = j.is_playing;
     $('spNow').style.display = 'flex'; $('spTitle').textContent = title; $('spArtist').textContent = artist;
+  } catch (e) { console.warn(e); }
+}
+
+// Play, pause and skip, asked for by tapping the charm's music screen.
+async function mediaControl(kind){
+  try {
+    if ($('musicSrc').value !== 'spotify' || !spotifyToken()) {
+      if (kind !== 'toggle') { hud('Skipping songs from the charm needs Spotify.'); return; }
+      $('mPlaying').checked = !$('mPlaying').checked; ui.playing = $('mPlaying').checked;
+      const [m, s] = $('mLen').value.split(':').map(Number);
+      await write(nowPlayingPacket(hexRgb($('mColor').value), ui.playing, 0, ((m || 0) * 60 + (s || 0)) * 1000, $('mTitle').value || 'Untitled', $('mArtist').value));
+      return;
+    }
+    if (!(await ensureToken())) { hud('Sign in with Spotify again.'); return; }
+    const path = kind === 'next' ? 'next' : kind === 'prev' ? 'previous' : (ui.playing ? 'pause' : 'play');
+    const r = await fetch('https://api.spotify.com/v1/me/player/' + path, { method: kind === 'toggle' ? 'PUT' : 'POST', headers: { Authorization: 'Bearer ' + spotifyToken() } });
+    if (r.status === 401 || r.status === 403) {
+      let reason = ''; try { reason = (await r.json()).error.reason || ''; } catch (_) {}
+      hud(reason === 'PREMIUM_REQUIRED' ? 'Spotify only allows this with Premium.' : 'Sign out of Spotify here and sign in again to allow control from the charm.');
+    } else if (r.status === 404) hud('Start a song on Spotify first.');
+    else hud({ next: 'Next song', prev: 'Previous song', toggle: ui.playing ? 'Paused' : 'Playing' }[kind]);
+    if (r.ok && kind === 'toggle') ui.playing = !ui.playing;
+    lastSent = 0; lastPlaying = null;
+    setTimeout(pollSpotify, 700);
   } catch (e) { console.warn(e); }
 }
 
@@ -528,13 +563,13 @@ let brightT;
 function brightLabel(){ $('brightVal').textContent = Math.round($('bright').value / 255 * 100) + '%'; }
 brightLabel();
 $('bright').addEventListener('input', () => { brightLabel(); clearTimeout(brightT); brightT = setTimeout(() => write(packet(CMD.BRIGHT, [+$('bright').value])).catch(() => {}), 120); });
-const OPT_IDS = ['swap', 'optSound', 'optShake', 'optChime', 'tiltX', 'tiltY', 'tiltSwap'];
+const OPT_IDS = ['swap', 'optSound', 'optShake', 'optChime', 'optFx', 'tiltX', 'tiltY', 'tiltSwap'];
 OPT_IDS.forEach(id => { const v = localStorage.getItem('o_' + id); if (v !== null) $(id).checked = v === '1'; });
 { const v = localStorage.getItem('o_sleep'); if (v !== null) $('sleep').value = v; }
 const sendSettings = act(async () => {
   OPT_IDS.forEach(id => localStorage.setItem('o_' + id, $(id).checked ? '1' : '0'));
   localStorage.setItem('o_sleep', $('sleep').value);
-  const flags = ($('optSound').checked ? 1 : 0) | ($('optShake').checked ? 2 : 0) | ($('optChime').checked ? 4 : 0);
+  const flags = ($('optSound').checked ? 1 : 0) | ($('optShake').checked ? 2 : 0) | ($('optChime').checked ? 4 : 0) | ($('optFx').checked ? 8 : 0);
   const tilt = ($('tiltX').checked ? 1 : 0) | ($('tiltY').checked ? 2 : 0) | ($('tiltSwap').checked ? 4 : 0);
   await write(packet(CMD.SETTINGS, [...i16(+$('sleep').value), $('swap').checked ? 1 : 0, flags, tilt]));
   hud('Saved');
@@ -549,15 +584,26 @@ $('findMe').onclick = act(() => write(packet(CMD.BUZZ, [5])));
   el.addEventListener('change', () => localStorage.setItem('f_' + id, el.value));
 });
 
+// ─────────── Colour theme ───────────
+function setTheme(t, send = true){
+  ui.theme = t = Math.max(0, Math.min(THEMES.length - 1, t | 0));
+  document.documentElement.style.setProperty('--acc', THEMES[t]);
+  document.querySelectorAll('#themes .thm').forEach(b => b.classList.toggle('on', +b.dataset.v === t));
+  localStorage.setItem('o_theme', t);
+  if (send) { if (window.kickCharm) kickCharm(3); if (rxChar) write(packet(CMD.THEME, [t])).catch(() => {}); }
+}
+document.querySelectorAll('#themes .thm').forEach(b => b.onclick = () => setTheme(+b.dataset.v));
+setTheme(+(localStorage.getItem('o_theme') || 0), false);
+
 // ─────────── Clock look ───────────
 function setLook(bg, face, send = true){
   ui.bg = bg; ui.face = face;
   document.querySelectorAll('#bgs .bgt').forEach(b => b.classList.toggle('on', +b.dataset.v === bg));
   document.querySelectorAll('#faceSeg button').forEach(b => b.classList.toggle('on', +b.dataset.v === face));
-  if (send) { setActiveMode(MODE.CLOCK); if (rxChar) write(packet(CMD.LOOK, [bg, face])).catch(() => {}); }
+  if (send) { if (ui.mode !== MODE.DECK) setActiveMode(MODE.CLOCK); if (window.kickCharm) kickCharm(2); if (rxChar) write(packet(CMD.LOOK, [bg, face])).catch(() => {}); }
 }
 document.querySelectorAll('#bgs .bgt').forEach(b => b.onclick = () => setLook(+b.dataset.v, ui.face));
-document.querySelectorAll('#faceSeg button').forEach(b => b.onclick = () => setLook(ui.bg, +b.dataset.v));
+document.querySelectorAll('#faceSeg button').forEach(b => b.onclick = () => { setActiveMode(MODE.CLOCK); setLook(ui.bg, +b.dataset.v); if (rxChar) write(packet(CMD.MODE, [MODE.CLOCK])).catch(() => {}); });
 
 // ─────────── Toys ───────────
 function setToy(k, send = true){
@@ -566,7 +612,7 @@ function setToy(k, send = true){
   if (send) { setActiveMode(MODE.TOY); if (rxChar) write(packet(CMD.TOY, [k, 0])).catch(() => {}); }
 }
 document.querySelectorAll('#toySeg button').forEach(b => b.onclick = () => setToy(+b.dataset.v));
-$('rollToy').onclick = act(async () => { await write(packet(CMD.TOY, [ui.toy, 1])); setActiveMode(MODE.TOY); hud(['Asking the ball…', 'Rolling…', 'Flipping…'][ui.toy]); });
+$('rollToy').onclick = act(async () => { await write(packet(CMD.TOY, [ui.toy, 1])); setActiveMode(MODE.TOY); hud(['Asking the oracle…', 'Rolling…', 'Flipping…'][ui.toy]); });
 
 // ─────────── Timer ───────────
 const startTimer = act(async min => {

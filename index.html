@@ -3,167 +3,177 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#DDF1FF">
+<meta name="theme-color" content="#170D3A">
 <title>Larp Charm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@500;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Silkscreen&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ice:#DDF1FF; --ink:#1A1033; --grape:#6B2FE0; --lemon:#FFE14A; --gum:#FF7AB8; --lime:#B6F36B; --sky:#8CCBFF; --paper:#fff;
-  --soft:#5b5275;
-  --puff:"DynaPuff", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
-  --body:"Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --line:2.5px solid var(--ink);
+  --base:#170D3A; --deep:#0E0726; --panel:#21134F; --raise:#2C1A66; --edge:#4A35A0;
+  --text:#ECE7FF; --soft:#A99BDB; --acc:#00E5FF; --on-acc:#0B0620; --warn:#FFB000; --bad:#FF5A6E; --good:#5CFF8A;
+  --head:"Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
+  --pix:"Silkscreen", ui-monospace, Menlo, monospace;
+  --cut:14px;
+  --chamfer:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth;scroll-padding-top:76px}
-body{margin:0;color:var(--ink);font:400 16px/1.5 var(--body);overflow-x:clip;
-  background:var(--ice) radial-gradient(circle, rgba(26,16,51,.13) 1.2px, transparent 1.6px) 0 0/22px 22px}
+html{scroll-behavior:smooth;scroll-padding-top:74px;background:var(--base)}
+body{margin:0;color:var(--text);font:400 16px/1.55 var(--head);overflow-x:clip;
+  background:var(--base) radial-gradient(circle, rgba(236,231,255,.10) 1px, transparent 1.4px) 0 0/24px 24px}
 button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:3px solid var(--grape);outline-offset:3px}
+:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
 .hidden{display:none !important}
+::selection{background:var(--acc);color:var(--on-acc)}
 
-/* top bar: the chain hangs from this */
-.bar{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:var(--line)}
-.bar-in{max-width:1120px;margin:0 auto;height:60px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.word{font:700 24px/1 var(--puff);letter-spacing:-.01em;white-space:nowrap}
-.word i{display:inline-block;font-style:normal;color:var(--grape);transform:rotate(-8deg) translateY(1px)}
-.bar-right{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:500}
-.status{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.dot{width:10px;height:10px;border-radius:50%;background:#c9c3d9;border:2px solid var(--ink)}
-.dot.on{background:var(--lime)}
-.bat{display:none;align-items:center;gap:5px}
+/* top bar */
+.bar{position:sticky;top:0;z-index:30;background:rgba(14,7,38,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--edge)}
+.bar-in{max-width:1120px;margin:0 auto;height:58px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.word{font:400 19px/1 var(--pix);white-space:nowrap;letter-spacing:.02em}
+.word i{font-style:normal;color:var(--acc)}
+.bar-right{display:flex;align-items:center;gap:14px;font-size:13.5px;font-weight:500}
+.status{display:flex;align-items:center;gap:7px;white-space:nowrap;color:var(--soft)}
+.dot{width:9px;height:9px;background:var(--edge)}
+.dot.on{background:var(--acc);box-shadow:0 0 10px var(--acc)}
+.bat{display:none;align-items:center;gap:6px}
 .bat.on{display:flex}
-.bat-shell{position:relative;width:24px;height:13px;border:2px solid var(--ink);border-radius:4px;background:#fff}
-.bat-shell::after{content:"";position:absolute;right:-5px;top:2px;width:3px;height:5px;border-radius:0 2px 2px 0;background:var(--ink)}
-.bat-fill{position:absolute;left:1px;top:1px;bottom:1px;border-radius:1px;background:var(--ink)}
-.bat.charging .bat-fill{background:#3fbf5a}
+.bat-shell{position:relative;width:24px;height:12px;border:1px solid var(--soft)}
+.bat-shell::after{content:"";position:absolute;right:-4px;top:3px;width:3px;height:4px;background:var(--soft)}
+.bat-fill{position:absolute;left:1px;top:1px;bottom:1px;background:var(--acc)}
+.bat.charging .bat-fill{background:var(--good)}
 .bolt{display:none;width:9px;height:12px}
+.bolt path{fill:var(--warn)}
 .bat.charging .bolt{display:block}
-@media (max-width:520px){ #connText{display:none} .word{font-size:20px} }
+@media (max-width:520px){ #connText{display:none} .word{font-size:16px} }
 
-/* buttons you can feel */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:var(--line);border-radius:999px;padding:10px 20px;
-  font:600 16px var(--body);background:var(--lemon);color:var(--ink);box-shadow:3px 3px 0 var(--ink);transition:transform .08s, box-shadow .08s}
-.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
-.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
-.btn:disabled{opacity:.45;cursor:default;transform:none;box-shadow:3px 3px 0 var(--ink)}
-.btn.sm{padding:5px 13px;font-size:13px;box-shadow:2px 2px 0 var(--ink)}
-.btn.grey,.btn.plain{background:var(--paper)}
-.btn.gum{background:var(--gum)}
-.btn.big{font:700 20px var(--puff);padding:13px 28px}
-.link{background:none;border:0;padding:0;cursor:pointer;font-weight:600;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+/* buttons: cut corners, like the panels on the charm */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:0;padding:11px 22px;
+  font:600 16px var(--head);background:var(--acc);color:var(--on-acc);
+  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);transition:filter .12s, transform .08s}
+.btn:hover{filter:brightness(1.15)}
+.btn:active{transform:translateY(1px);filter:brightness(.9)}
+.btn:disabled{opacity:.4;cursor:default;filter:none;transform:none}
+.btn.sm{padding:6px 14px;font-size:13.5px}
+.btn.grey,.btn.plain{background:var(--raise);color:var(--text);box-shadow:inset 0 0 0 1px var(--edge)}
+.btn.gum{background:var(--text);color:var(--on-acc)}
+.btn.big{font-size:19px;padding:14px 30px}
+.link{background:none;border:0;padding:0;cursor:pointer;font-weight:600;color:var(--acc);text-decoration:underline;text-underline-offset:3px}
 
 /* layout */
 .notice{display:none;max-width:1120px;margin:14px auto 0;padding:0 16px}
-.notice div{background:var(--lemon);border:var(--line);border-radius:16px;padding:12px 16px;font-weight:500}
+.notice div{background:var(--warn);color:var(--on-acc);padding:12px 16px;font-weight:600}
 .layout{max-width:1120px;margin:0 auto;padding:0 16px 60px;display:grid;grid-template-columns:1fr;gap:8px}
-.stage{position:relative;height:440px}
-.hang{position:relative;height:100%}
+.stage{position:relative;padding:26px 0 6px}
 @media (min-width:920px){
-  .layout{grid-template-columns:340px 1fr;gap:44px;align-items:start}
-  .stage{position:sticky;top:60px;height:calc(100vh - 60px);min-height:480px}
+  .layout{grid-template-columns:330px 1fr;gap:48px;align-items:start}
+  .stage{position:sticky;top:58px;height:calc(100vh - 58px);min-height:520px;display:flex;flex-direction:column;justify-content:center;padding:0}
 }
 
-/* the dangling charm */
-.rig{position:absolute;left:50%;top:0;width:206px;margin-left:-103px;transform-origin:50% 0;touch-action:manipulation;cursor:grab;will-change:transform}
-.chain{width:14px;height:86px;margin:0 auto;background:radial-gradient(circle at 50% 50%, #d9d3ea 0 3.6px, var(--ink) 3.8px 5.6px, transparent 6px) 0 0/14px 14px repeat-y}
-.ring{width:30px;height:30px;margin:-4px auto -10px;border:5px solid #d9d3ea;border-radius:50%;box-shadow:0 0 0 2.5px var(--ink), inset 0 0 0 2.5px var(--ink);position:relative;z-index:1}
-.shell{position:relative;padding:14px 14px 20px;border-radius:44px;border:3px solid var(--ink);
-  background:linear-gradient(155deg, rgba(167,128,255,.82), rgba(107,47,224,.9));
-  box-shadow:inset 7px 7px 0 rgba(255,255,255,.32), inset -6px -8px 0 rgba(26,16,51,.18), 7px 8px 0 var(--ink)}
-.shell canvas{display:block;width:100%;aspect-ratio:240/280;border-radius:26px;border:3px solid var(--ink);background:#000}
-.nub{position:absolute;right:-9px;top:74px;width:9px;height:34px;border:3px solid var(--ink);border-left:0;border-radius:0 8px 8px 0;background:var(--gum)}
-.poke{position:absolute;left:calc(50% + 96px);top:150px;margin:0;font:500 15px var(--puff);color:var(--grape);transform:rotate(9deg);white-space:nowrap;pointer-events:none;transition:opacity .4s}
-.poke svg{display:block;width:44px;height:26px;margin:0 0 2px -30px}
-.poke.gone{opacity:0}
-@media (max-width:919px){ .poke{left:calc(50% + 70px);top:60px} }
-@media (min-width:920px){ .poke{left:calc(50% + 10px);top:418px;transform:rotate(-6deg)} .poke svg{transform:rotate(55deg);margin:0 0 4px -14px} }
+/* the charm */
+.hang{perspective:900px}
+.rig{position:relative;width:216px;margin:0 auto;transform-style:preserve-3d;will-change:transform;cursor:pointer;touch-action:manipulation}
+.loop{width:46px;height:26px;margin:0 auto -3px;border:5px solid #3a2a78;border-bottom:0;border-radius:23px 23px 0 0}
+.shell{position:relative;padding:15px 15px 30px;border-radius:30px;background:linear-gradient(160deg,#35217a,#1b0f47);
+  box-shadow:inset 0 0 0 1px #5a43b8, inset 0 2px 0 rgba(255,255,255,.14), 0 26px 50px -18px rgba(0,0,0,.7), 0 0 60px -22px var(--acc)}
+.shell canvas{display:block;width:100%;aspect-ratio:240/280;border-radius:26px;background:#000;box-shadow:0 0 0 2px #0a051c}
+.shell::after{content:"LARP//OS";position:absolute;left:0;right:0;bottom:9px;text-align:center;font:400 9px var(--pix);color:#6f5bc4;letter-spacing:.12em}
+.nub{position:absolute;right:-5px;top:78px;width:5px;height:34px;background:#4a35a0;border-radius:0 3px 3px 0}
+.poke{margin:18px auto 0;max-width:250px;text-align:center;font-size:14px;line-height:1.4;color:var(--soft)}
 
 /* intro */
-.intro{padding:34px 0 10px}
-.intro h1{font:700 clamp(40px,7.4vw,68px)/.98 var(--puff);letter-spacing:-.02em;margin:0 0 16px;max-width:11ch}
-.intro p{font-size:19px;line-height:1.45;max-width:46ch;margin:0 0 22px;color:var(--soft)}
-.intro .ctas{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.intro small{font-size:13.5px;color:var(--soft)}
-@media (max-width:919px){ .intro{padding-top:6px} }
+.intro{padding:40px 0 6px}
+.intro h1{font:700 clamp(38px,6.6vw,62px)/1.02 var(--head);letter-spacing:-.015em;margin:0 0 18px;max-width:13ch}
+.intro p{font-size:18.5px;line-height:1.5;max-width:50ch;margin:0 0 24px;color:var(--soft)}
+.intro .ctas{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.intro small{font-size:13.5px;color:var(--soft);line-height:1.45}
+@media (max-width:919px){ .intro{padding-top:14px} }
 
-/* panels */
-.panel{position:relative;background:var(--paper);border:var(--line);border-radius:26px;padding:26px 24px 26px;margin:34px 0 0;box-shadow:6px 6px 0 var(--ink)}
-.badge{position:absolute;top:-22px;right:22px;width:52px;height:52px;border-radius:50%;border:var(--line);background:var(--tab,var(--lemon));display:grid;place-items:center;transform:rotate(var(--tilt,8deg));box-shadow:2px 3px 0 var(--ink)}
-.badge svg,.tile svg{width:26px;height:26px;stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.panel h2{font:700 30px/1.05 var(--puff);letter-spacing:-.01em;margin:0 0 6px;padding-right:64px}
-.lede{margin:0 0 22px;color:var(--soft);max-width:56ch}
-.sub{font:700 20px var(--puff);margin:0 0 12px}
+/* panels: same cut corners and name tag as the blocks on the charm's deck */
+.panel{position:relative;margin:40px 0 0;padding:30px 24px 26px;background:var(--edge);clip-path:var(--chamfer)}
+.panel::before{content:"";position:absolute;inset:1px;background:var(--panel);clip-path:var(--chamfer)}
+.panel > *{position:relative}
+.panel > .tag{position:absolute;top:0;left:26px;background:var(--acc);color:var(--on-acc);font:400 11px/1 var(--pix);padding:5px 8px 4px}
+.panel h2{font:700 27px/1.1 var(--head);margin:0 0 6px}
+.lede{margin:0 0 22px;color:var(--soft);max-width:58ch}
+.sub{font:700 19px var(--head);margin:0 0 12px}
 .split{display:grid;gap:24px}
 @media (min-width:640px){ .split{grid-template-columns:200px 1fr;align-items:start} }
 .frame{width:min(200px,62vw);margin:0 auto}
-.frame canvas{display:block;width:100%;border-radius:22px;border:var(--line);background:#000;box-shadow:4px 4px 0 var(--ink)}
-.divide{border:0;border-top:2.5px dashed var(--ink);margin:26px 0;opacity:.35}
+.frame canvas{display:block;width:100%;border-radius:20px;background:#000;box-shadow:0 0 0 1px var(--edge)}
+.divide{border:0;border-top:1px dashed var(--edge);margin:26px 0}
 
-/* screen stickers */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px}
-.tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px 12px;cursor:pointer;border:var(--line);border-radius:20px;background:var(--c,#fff);
-  font:700 16px var(--puff);box-shadow:3px 3px 0 var(--ink);transform:rotate(var(--r,0deg));transition:transform .12s, box-shadow .12s}
-.tile:hover{transform:rotate(0deg) translate(-1px,-2px);box-shadow:4px 5px 0 var(--ink)}
-.tile:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
-.tile.active{background:var(--ink);color:var(--lemon);transform:rotate(0deg)}
-.tile.active svg{stroke:var(--lemon)}
+/* jump-to buttons */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:10px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px 12px 10px;cursor:pointer;border:0;background:var(--raise);color:var(--text);
+  font:600 15px var(--head);box-shadow:inset 0 0 0 1px var(--edge);clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);transition:background .12s}
+.tile svg{width:24px;height:24px;stroke:var(--acc);fill:none;stroke-width:1.8;stroke-linecap:square;stroke-linejoin:miter}
+.tile:hover{background:#38227f}
+.tile.active{background:var(--acc);color:var(--on-acc);box-shadow:none}
+.tile.active svg{stroke:var(--on-acc)}
 
 /* form bits */
 .field{margin:0 0 18px}
 .field:last-child{margin-bottom:0}
 .label{display:block;font-weight:600;font-size:14.5px;margin:0 0 8px}
 .hint{font-size:14px;color:var(--soft);margin:8px 0 0}
-input[type=text],input[type=url],input[type=number],textarea,select{width:100%;padding:11px 14px;border:var(--line);border-radius:14px;background:#fff;outline:none;transition:box-shadow .12s;-webkit-appearance:none;appearance:none}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%231A1033' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px}
-input:focus,textarea:focus,select:focus{box-shadow:4px 4px 0 var(--lemon)}
+input[type=text],input[type=url],input[type=number],textarea,select{width:100%;padding:11px 13px;border:0;border-radius:0;background:var(--deep);
+  box-shadow:inset 0 0 0 1px var(--edge), inset 0 -2px 0 var(--edge);outline:none;-webkit-appearance:none;appearance:none}
+::placeholder{color:#7667ad}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23A99BDB' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px}
+input:focus,textarea:focus,select:focus{box-shadow:inset 0 0 0 1px var(--edge), inset 0 -2px 0 var(--acc)}
 textarea{min-height:92px;resize:vertical}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
 .row > .grow{flex:1;min-width:150px}
 .actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:22px}
 
-.seg{display:flex;width:100%;border:var(--line);border-radius:999px;padding:3px;background:#fff;gap:2px}
-.seg button{flex:1;border:0;background:transparent;padding:7px 8px;border-radius:999px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
-.seg button.on{background:var(--ink);color:#fff}
+.seg{display:flex;flex-wrap:wrap;width:100%;gap:1px;background:var(--edge);padding:1px}
+.seg button{flex:1;border:0;background:var(--deep);padding:9px 10px;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap;color:var(--soft)}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--acc);color:var(--on-acc)}
 
 .swatches{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
-.sw,.sw-custom{width:32px;height:32px;border-radius:50%;border:var(--line);cursor:pointer;padding:0;position:relative;transition:transform .1s}
-.sw.on{transform:scale(1.18);box-shadow:0 0 0 3px var(--paper), 0 0 0 5.5px var(--ink)}
+.sw,.sw-custom{width:30px;height:30px;border:0;cursor:pointer;padding:0;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.sw.on{outline:2px solid var(--text);outline-offset:3px}
 .sw-custom{overflow:hidden;background:conic-gradient(#ff5a5a,#ffe14a,#7be36b,#5ad2ff,#6b6bff,#ff7ab8,#ff5a5a)}
 .sw-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0}
-input[type=range]::-webkit-slider-runnable-track{height:12px;border:var(--line);border-radius:99px;background:linear-gradient(var(--grape),var(--grape)) 0/var(--p,50%) 100% no-repeat #fff}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--lemon);border:var(--line);margin-top:-9.5px;box-shadow:2px 2px 0 var(--ink)}
-input[type=range]::-moz-range-track{height:8px;border:var(--line);border-radius:99px;background:#fff}
-input[type=range]::-moz-range-progress{height:8px;border-radius:99px;background:var(--grape)}
-input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--lemon);border:var(--line)}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:linear-gradient(var(--acc),var(--acc)) 0/var(--p,50%) 100% no-repeat var(--deep);box-shadow:0 0 0 1px var(--edge)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:24px;background:var(--text);margin-top:-9px;border:0;border-radius:0}
+input[type=range]::-moz-range-track{height:6px;background:var(--deep);box-shadow:0 0 0 1px var(--edge)}
+input[type=range]::-moz-range-progress{height:6px;background:var(--acc)}
+input[type=range]::-moz-range-thumb{width:14px;height:24px;background:var(--text);border:0;border-radius:0}
 .range-row{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--soft)}
 
 .switch{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:5px 0}
 .switch span small{display:block;color:var(--soft);font-size:13.5px}
-.switch input{-webkit-appearance:none;appearance:none;flex:none;width:54px;height:30px;border-radius:30px;border:var(--line);background:#fff;position:relative;cursor:pointer;transition:background .15s}
-.switch input::after{content:"";position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:var(--ink);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
-.switch input:checked{background:var(--lime)}
-.switch input:checked::after{transform:translateX(24px)}
+.switch input{-webkit-appearance:none;appearance:none;flex:none;width:50px;height:26px;background:var(--deep);box-shadow:inset 0 0 0 1px var(--edge);position:relative;cursor:pointer;margin:0}
+.switch input::after{content:"";position:absolute;top:4px;left:4px;width:18px;height:18px;background:var(--soft);transition:transform .15s, background .15s}
+.switch input:checked{box-shadow:inset 0 0 0 1px var(--acc)}
+.switch input:checked::after{transform:translateX(24px);background:var(--acc)}
 
 .file{position:relative;display:inline-flex}
 .file input{position:absolute;inset:0;opacity:0;cursor:pointer}
 
 .progress{display:none;margin-top:18px}
 .progress.on{display:block}
-.bar-track{height:14px;border:var(--line);border-radius:99px;background:#fff;overflow:hidden}
-.bar-track i{display:block;height:100%;width:0;background:repeating-linear-gradient(-45deg,var(--gum) 0 10px,#ff9ccb 10px 20px);transition:width .15s linear}
+.bar-track{height:10px;background:var(--deep);box-shadow:0 0 0 1px var(--edge);overflow:hidden}
+.bar-track i{display:block;height:100%;width:0;background:repeating-linear-gradient(90deg,var(--acc) 0 8px,transparent 8px 10px);transition:width .15s linear}
 .progress p{margin:8px 0 0;font-size:14px;color:var(--soft)}
 
-/* clock backgrounds */
-.bgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:12px}
-.bgt{cursor:pointer;border:0;background:none;padding:0;font-weight:600;font-size:13.5px;text-align:center}
-.bgt span{display:block;aspect-ratio:1;border:var(--line);border-radius:16px;margin-bottom:6px;box-shadow:3px 3px 0 var(--ink);transition:transform .1s, box-shadow .1s}
-.bgt:hover span{transform:translate(-1px,-2px);box-shadow:4px 5px 0 var(--ink)}
-.bgt.on span{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink), 0 0 0 4px var(--lemon) inset}
+/* colour themes */
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.thm{display:flex;align-items:center;gap:8px;cursor:pointer;border:0;background:var(--deep);padding:9px 10px;font-weight:600;font-size:14px;color:var(--text);box-shadow:inset 0 0 0 1px var(--edge)}
+.thm i{width:14px;height:14px;background:var(--c);box-shadow:0 0 10px var(--c)}
+.thm.on{box-shadow:inset 0 0 0 2px var(--c)}
+
+/* backgrounds */
+.bgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:12px}
+.bgt{cursor:pointer;border:0;background:none;padding:0;font-weight:600;font-size:13.5px;text-align:center;color:var(--soft)}
+.bgt span{display:block;aspect-ratio:1;margin-bottom:6px;box-shadow:0 0 0 1px var(--edge)}
+.bgt:hover{color:var(--text)}
+.bgt.on{color:var(--acc)}
+.bgt.on span{box-shadow:0 0 0 2px var(--acc)}
 .bg0 span{background:linear-gradient(#2e1065,#0c4a6e)}
 .bg1 span{background:radial-gradient(circle at 30% 30%,#fff 0 1.5px,transparent 2px),radial-gradient(circle at 70% 60%,#fff 0 2px,transparent 2.5px),radial-gradient(circle at 45% 80%,#aab 0 1.5px,transparent 2px),radial-gradient(circle at 80% 20%,#fff 0 1px,transparent 1.5px),#040212}
 .bg2 span{background:radial-gradient(circle at 50% 46%,#ffe65a 0 24%,transparent 25%),linear-gradient(#14063c 0,#ff5aaa 62%,#0e0428 62%)}
@@ -172,44 +182,47 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .bg5 span{background:radial-gradient(circle at 35% 68%,#ffe178 0 12%,#ff8c3c 13% 22%,#ff3c78 23% 27%,transparent 28%),radial-gradient(circle at 68% 30%,#ffe178 0 8%,#ff8c3c 9% 16%,#ff3c78 17% 20%,transparent 21%),#28083c}
 .bg6 span{background:radial-gradient(circle at 25% 25%,#fff 0 2px,transparent 2.5px),radial-gradient(circle at 60% 45%,#fff 0 3px,transparent 3.5px),radial-gradient(circle at 40% 75%,#fff 0 2px,transparent 2.5px),radial-gradient(circle at 82% 80%,#fff 0 2.5px,transparent 3px),linear-gradient(#08143c,#285aa0)}
 .bg7 span{background:conic-gradient(#ffaad7 25%,#aae1ff 0 50%,#ffaad7 0 75%,#aae1ff 0) 0 0/50% 50%}
-.bg8 span{background:linear-gradient(135deg,#ffe14a 0 50%,#ff7ab8 50%);display:grid;place-items:center}
+.bg8 span{background:var(--raise);display:grid;place-items:center}
+.bg9 span{background:radial-gradient(circle at 25% 30%,var(--acc) 0 2px,transparent 2.5px),radial-gradient(circle at 70% 25%,var(--acc) 0 2px,transparent 2.5px),radial-gradient(circle at 55% 72%,var(--acc) 0 2px,transparent 2.5px),linear-gradient(8deg,transparent 48.5%,var(--acc) 49% 50%,transparent 50.5%),#03050c}
+.bg10 span{background:radial-gradient(circle,var(--acc) 0 1px,transparent 1.4px) 0 0/14px 14px,#000}
 
 /* clip list */
-.list{margin:0;padding:0;list-style:none;border:var(--line);border-radius:18px;overflow:hidden;background:#fff}
-.list li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:2px dashed rgba(26,16,51,.25)}
+.list{margin:0;padding:0;list-style:none;background:var(--deep);box-shadow:0 0 0 1px var(--edge)}
+.list li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--edge)}
 .list li:first-child{border-top:0}
 .list .meta{flex:1;min-width:0}
 .list .meta b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .list .meta span{font-size:13.5px;color:var(--soft)}
-.list .now{font-size:12.5px;font-weight:600;background:var(--lime);border:2px solid var(--ink);border-radius:99px;padding:2px 9px;white-space:nowrap}
+.list .now{font-size:12.5px;font-weight:600;background:var(--acc);color:var(--on-acc);padding:3px 9px;white-space:nowrap}
 .empty{padding:16px;color:var(--soft)}
 .storage{margin:18px 0 8px;font-size:14px;color:var(--soft);display:flex;justify-content:space-between}
-.storage-bar{height:12px;border:var(--line);border-radius:99px;background:#fff;overflow:hidden}
-.storage-bar i{display:block;height:100%;width:0;background:var(--grape)}
+.storage-bar{height:8px;background:var(--deep);box-shadow:0 0 0 1px var(--edge);overflow:hidden}
+.storage-bar i{display:block;height:100%;width:0;background:var(--acc)}
 
 .np{display:none;align-items:center;gap:12px;margin-top:18px}
-.np img{width:56px;height:56px;border-radius:12px;border:var(--line);object-fit:cover;background:var(--ice)}
+.np img{width:56px;height:56px;object-fit:cover;background:var(--deep);box-shadow:0 0 0 1px var(--edge)}
 .np b{display:block}
 .np span{font-size:14px;color:var(--soft)}
-code{font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--ice);padding:2px 6px;border-radius:6px;word-break:break-all}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--deep);padding:2px 6px;word-break:break-all}
 
-/* cheat sheet */
-.cheat{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:0;padding:0;list-style:none}
-.cheat li{border:var(--line);border-radius:16px;padding:12px 14px;background:var(--ice)}
-.cheat b{display:block;font:700 17px var(--puff)}
+/* gestures */
+.cheat{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;margin:0;padding:1px;list-style:none;background:var(--edge)}
+.cheat li{padding:13px 15px;background:var(--deep)}
+.cheat b{display:block;font-weight:700;font-size:16px;color:var(--acc)}
 .cheat span{font-size:14.5px;color:var(--soft)}
 
 footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color:var(--soft)}
 
-.hud{position:fixed;left:50%;bottom:26px;transform:translate(-50%,24px) rotate(-1.5deg);opacity:0;background:var(--ink);color:#fff;font-weight:500;padding:11px 20px;border-radius:999px;
-  box-shadow:4px 4px 0 var(--gum);transition:opacity .2s, transform .25s cubic-bezier(.3,1.5,.5,1);pointer-events:none;z-index:50;max-width:calc(100% - 32px);text-align:center}
-.hud.on{opacity:1;transform:translate(-50%,0) rotate(-1.5deg)}
+.hud{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;background:var(--deep);color:var(--acc);font-weight:600;padding:11px 20px;
+  box-shadow:inset 0 0 0 1px var(--acc), 0 12px 30px -10px rgba(0,0,0,.8);transition:opacity .18s, transform .18s;pointer-events:none;z-index:50;max-width:calc(100% - 32px);text-align:center}
+.hud.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){ *{transition:none !important} html{scroll-behavior:auto} }
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-deck" viewBox="0 0 28 28"><path d="M4 4h20v8H4zM4 15h11v9H4zM18 15h6v9h-6z"/></symbol>
   <symbol id="i-clock" viewBox="0 0 28 28"><circle cx="14" cy="14" r="10.5"/><path d="M14 8v6.5l4 2"/></symbol>
   <symbol id="i-text" viewBox="0 0 28 28"><path d="M5 8h18M5 14h18M5 20h10"/></symbol>
   <symbol id="i-photo" viewBox="0 0 28 28"><rect x="4" y="5" width="20" height="18" rx="4"/><circle cx="10" cy="11" r="2"/><path d="M4.5 20l6-5 4.500 3.500 3-2.500 5.500 4"/></symbol>
@@ -226,9 +239,9 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 
 <header class="bar">
   <div class="bar-in">
-    <span class="word">larp ch<i>a</i>rm</span>
+    <span class="word">larp<i>//</i>charm</span>
     <div class="bar-right">
-      <span class="status"><span class="bat" id="bat"><svg class="bolt" viewBox="0 0 9 12"><path d="M5.500 0L0 7h3.500L2.500 12 9 4.500H5L5.500 0z" fill="#1A1033"/></svg><span class="bat-shell"><span class="bat-fill" id="batFill"></span></span><span id="batPct"></span></span></span>
+      <span class="status"><span class="bat" id="bat"><svg class="bolt" viewBox="0 0 9 12"><path d="M5.500 0L0 7h3.500L2.500 12 9 4.500H5L5.500 0z" /></svg><span class="bat-shell"><span class="bat-fill" id="batFill"></span></span><span id="batPct"></span></span></span>
       <span class="status"><span class="dot" id="dot"></span><span id="connText">Not connected</span></span>
       <button class="btn sm" id="connectBtn">Connect</button>
     </div>
@@ -241,48 +254,62 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
   <aside class="stage" aria-label="Live preview of your charm">
     <div class="hang">
       <div class="rig" id="rig">
-        <div class="chain"></div>
-        <div class="ring"></div>
+        <div class="loop"></div>
         <div class="shell"><canvas id="heroCv" width="240" height="280"></canvas><span class="nub"></span></div>
       </div>
-      <p class="poke" id="pokeNote"><svg viewBox="0 0 44 26" fill="none" stroke="#6B2FE0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M42 20C30 26 14 20 6 8M4 16l1.500-9L14 9"/></svg>poke it</p>
     </div>
+    <p class="poke" id="pokeNote">This is the deck. Tap a block to open it, tap again to go back.</p>
   </aside>
 
   <div class="panels">
     <div class="intro">
-      <h1>Your bag has a screen now.</h1>
-      <p>Dress it up, make it say things, feed the little guy who lives in it. The charm on the chain shows what yours will look like.</p>
+      <h1>Your bag runs an OS now.</h1>
+      <p>One screen, the deck, shows the time, your song, your pet and your message all at once. Tap any block to open it full screen. The charm beside this text is a working copy of yours.</p>
       <div class="ctas">
         <button class="btn big" id="heroConnect">Connect</button>
-        <small>Bluetooth, from Chrome on Android or a laptop.<br>You can play with the preview without connecting.</small>
+        <small>Bluetooth, from Chrome on Android or a laptop.<br>The preview works without connecting.</small>
       </div>
     </div>
 
-    <section class="panel" id="screens" style="--tab:var(--lemon);--tilt:-7deg">
-      <span class="badge"><svg><use href="#i-hand"/></svg></span>
-      <h2>Pick a screen</h2>
-      <p class="lede">Or swipe sideways on the charm. Same thing, more fun.</p>
+    <section class="panel" id="screens">
+      <span class="tag">DECK</span>
+      <h2>Open a block</h2>
+      <p class="lede">The same thing as tapping it on the charm. Deck brings you back to the main screen.</p>
       <div class="tiles" id="modes">
-        <button class="tile" data-m="0" style="--c:#FFE14A;--r:-2deg"><svg><use href="#i-clock"/></svg>Clock</button>
-        <button class="tile" data-m="1" style="--c:#FF9CCB;--r:1.500deg"><svg><use href="#i-text"/></svg>Text</button>
-        <button class="tile" data-m="2" style="--c:#8CCBFF;--r:-1deg"><svg><use href="#i-photo"/></svg>Photo</button>
-        <button class="tile" data-m="3" style="--c:#B6F36B;--r:2deg"><svg><use href="#i-clip"/></svg>Clips</button>
-        <button class="tile" data-m="4" style="--c:#C9B3FF;--r:-1.500deg"><svg><use href="#i-music"/></svg>Music</button>
-        <button class="tile" data-m="5" style="--c:#FFC48A;--r:1deg"><svg><use href="#i-pet"/></svg>Pet</button>
-        <button class="tile" data-m="6" style="--c:#9BEBD8;--r:-2deg"><svg><use href="#i-toy"/></svg>Toys</button>
-        <button class="tile" data-m="7" style="--c:#fff;--r:1.500deg"><svg><use href="#i-card"/></svg>Card</button>
+        <button class="tile" data-m="8"><svg><use href="#i-deck"/></svg>Deck</button>
+        <button class="tile" data-m="0"><svg><use href="#i-clock"/></svg>Chrono</button>
+        <button class="tile" data-m="4"><svg><use href="#i-music"/></svg>Audio</button>
+        <button class="tile" data-m="5"><svg><use href="#i-pet"/></svg>Daemon</button>
+        <button class="tile" data-m="6"><svg><use href="#i-toy"/></svg>RNG</button>
+        <button class="tile" data-m="1"><svg><use href="#i-text"/></svg>Msg</button>
+        <button class="tile" data-m="2"><svg><use href="#i-photo"/></svg>Img</button>
+        <button class="tile" data-m="3"><svg><use href="#i-clip"/></svg>Vid</button>
+        <button class="tile" data-m="7"><svg><use href="#i-card"/></svg>ID</button>
       </div>
     </section>
 
-    <section class="panel" id="look" style="--tab:var(--gum);--tilt:9deg">
-      <span class="badge"><svg><use href="#i-brush"/></svg></span>
-      <h2>Dress the clock</h2>
-      <p class="lede">Nine moving backgrounds, four ways to tell the time. On the charm, shake it while the clock is showing to shuffle.</p>
+    <section class="panel" id="look">
+      <span class="tag">CHRONO</span>
+      <h2>Colour and backdrop</h2>
+      <p class="lede">The backdrop moves behind the deck and the clock. The colour runs through everything, and switches to the album’s colour while a song plays.</p>
       <div class="field">
-        <span class="label">Background</span>
+        <span class="label">Colour</span>
+        <div class="themes" id="themes">
+          <button class="thm on" data-v="0" style="--c:#00E5FF"><i></i>Ice</button>
+          <button class="thm" data-v="1" style="--c:#FF2BD6"><i></i>Neon</button>
+          <button class="thm" data-v="2" style="--c:#FFB000"><i></i>Amber</button>
+          <button class="thm" data-v="3" style="--c:#39FF14"><i></i>Phosphor</button>
+          <button class="thm" data-v="4" style="--c:#FF3B30"><i></i>Redline</button>
+          <button class="thm" data-v="5" style="--c:#C8DCFF"><i></i>Ghost</button>
+        </div>
+        <p class="hint">On the charm: swipe sideways on the deck.</p>
+      </div>
+      <div class="field">
+        <span class="label">Backdrop</span>
         <div class="bgs" id="bgs">
-          <button class="bgt bg0 on" data-v="0"><span></span>Aurora</button>
+          <button class="bgt bg9 on" data-v="9"><span></span>Net</button>
+          <button class="bgt bg10" data-v="10"><span></span>Void</button>
+          <button class="bgt bg0" data-v="0"><span></span>Aurora</button>
           <button class="bgt bg1" data-v="1"><span></span>Warp</button>
           <button class="bgt bg2" data-v="2"><span></span>Vapor</button>
           <button class="bgt bg3" data-v="3"><span></span>Matrix</button>
@@ -290,20 +317,20 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
           <button class="bgt bg5" data-v="5"><span></span>Lava</button>
           <button class="bgt bg6" data-v="6"><span></span>Snow</button>
           <button class="bgt bg7" data-v="7"><span></span>Checker</button>
-          <button class="bgt bg8" data-v="8"><span><svg width="26" height="26" fill="none" stroke="#1A1033" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-photo"/></svg></span>Your photo</button>
+          <button class="bgt bg8" data-v="8"><span><svg width="26" height="26" fill="none" stroke="#A99BDB" stroke-width="2"><use href="#i-photo"/></svg></span>Your photo</button>
         </div>
-        <p class="hint">Snow and lava follow gravity, so tilt the charm and watch. “Your photo” uses the picture you send in the Photo section.</p>
+        <p class="hint">Snow and lava follow gravity when you tilt the charm. Void uses the least battery. “Your photo” uses the picture from the Img section. On the charm: shake it on the deck to shuffle.</p>
       </div>
       <div class="field">
         <span class="label">Clock style</span>
-        <div class="seg" id="faceSeg"><button data-v="0" class="on">Big digits</button><button data-v="1">Hands</button><button data-v="2">In words</button><button data-v="3">Bouncy</button></div>
+        <div class="seg" id="faceSeg"><button data-v="0" class="on">Segments</button><button data-v="1">Hands</button><button data-v="2">In words</button><button data-v="3">Bouncy</button></div>
       </div>
     </section>
 
-    <section class="panel" id="text" style="--tab:var(--sky);--tilt:-9deg">
-      <span class="badge"><svg><use href="#i-text"/></svg></span>
-      <h2>Make it say things</h2>
-      <p class="lede">Short and loud works best. It picks the biggest size that fits.</p>
+    <section class="panel" id="text">
+      <span class="tag">MSG</span>
+      <h2>Message</h2>
+      <p class="lede">Scrolls across the deck, and fills the screen when you open it. Short works best.</p>
       <div class="field">
         <label class="label" for="txt">Message</label>
         <textarea id="txt" maxlength="300" placeholder="Type a message">hello :)</textarea>
@@ -311,19 +338,19 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       </div>
       <div class="field">
         <span class="label">Style</span>
-        <div class="seg" id="txtStyle"><button data-v="0" class="on">Still</button><button data-v="1">Scrolling</button><button data-v="2">Rainbow</button></div>
+        <div class="seg" id="txtStyle"><button data-v="0" class="on">Still</button><button data-v="1">Scrolling</button><button data-v="2">Rainbow</button><button data-v="3">Terminal</button></div>
       </div>
       <div class="row">
-        <div class="grow field"><span class="label">Text colour</span><div class="swatches" data-target="txtFg" data-colors="#ffffff,#1A1033,#FFE14A,#FF7AB8,#8CCBFF,#B6F36B"></div><input type="hidden" id="txtFg" value="#ffffff"></div>
-        <div class="grow field"><span class="label">Background</span><div class="swatches" data-target="txtBg" data-colors="#2e1065,#000000,#6B2FE0,#FF4F9A,#ffffff,#0f5132"></div><input type="hidden" id="txtBg" value="#2e1065"></div>
+        <div class="grow field"><span class="label">Text colour</span><div class="swatches" data-target="txtFg" data-colors="#ffffff,#00E5FF,#FF2BD6,#FFB000,#39FF14,#170D3A"></div><input type="hidden" id="txtFg" value="#ffffff"></div>
+        <div class="grow field"><span class="label">Background</span><div class="swatches" data-target="txtBg" data-colors="#000000,#170D3A,#2e1065,#6B2FE0,#ffffff,#0f5132"></div><input type="hidden" id="txtBg" value="#000000"></div>
       </div>
       <div class="actions"><button class="btn" id="sendTxt">Show on charm</button></div>
     </section>
 
-    <section class="panel" id="photo" style="--tab:var(--lime);--tilt:7deg">
-      <span class="badge"><svg><use href="#i-photo"/></svg></span>
-      <h2>Put a face on it</h2>
-      <p class="lede">One photo, saved on the charm. It survives restarts and can also sit behind the clock.</p>
+    <section class="panel" id="photo">
+      <span class="tag">IMG</span>
+      <h2>Photo</h2>
+      <p class="lede">One photo, saved on the charm. It survives restarts and can also sit behind the deck as a backdrop.</p>
       <div class="split">
         <div class="frame"><canvas id="photoCv" width="240" height="280"></canvas></div>
         <div>
@@ -336,10 +363,10 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       </div>
     </section>
 
-    <section class="panel" id="clips" style="--tab:var(--lemon);--tilt:-8deg">
-      <span class="badge"><svg><use href="#i-clip"/></svg></span>
+    <section class="panel" id="clips">
+      <span class="tag">VID</span>
       <h2>GIFs and videos</h2>
-      <p class="lede">Long ones are fine. Your phone shrinks them first, then the charm keeps a few and you tap its screen to flip between them.</p>
+      <p class="lede">Long ones are fine. Your phone shrinks them first, then the charm keeps a few. Swipe sideways on the charm to flip between them.</p>
       <div class="split">
         <div class="frame" id="clipDevice"><canvas id="clipCv" width="240" height="280"></canvas></div>
         <div>
@@ -364,22 +391,23 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       <div class="storage-bar"><i id="storageFill"></i></div>
     </section>
 
-    <section class="panel" id="music" style="--tab:#C9B3FF;--tilt:8deg">
-      <span class="badge"><svg><use href="#i-music"/></svg></span>
-      <h2>What’s playing</h2>
-      <p class="lede">Album art with a glow pulled from the cover. Live from Spotify, or typed in for anything else.</p>
+    <section class="panel" id="music">
+      <span class="tag">AUDIO</span>
+      <h2>Now playing</h2>
+      <p class="lede">The album cover fills the whole screen and the deck takes its colour. Tap the left, middle or right of the cover on the charm to go back, pause or skip.</p>
       <div class="field"><div class="seg" id="musicSrc"><button data-v="spotify" class="on">Spotify</button><button data-v="manual">Type it in</button></div></div>
       <div id="spotifyBox">
         <div class="field"><label class="label" for="spClient">Spotify Client ID</label><input type="text" id="spClient" placeholder="From developer.spotify.com/dashboard" autocomplete="off"></div>
-        <label class="field switch"><span>Keep the charm in sync<small>Works while this page stays open.</small></span><input type="checkbox" id="spLive" checked></label>
+        <label class="field switch"><span>Keep the charm in sync<small>Works while this page stays open and on screen.</small></span><input type="checkbox" id="spLive" checked></label>
         <div class="actions" style="margin-top:8px"><button class="btn" id="spLogin">Sign in with Spotify</button><button class="link" id="spLogout">Sign out</button></div>
         <div class="np" id="spNow"><img id="spArt" alt=""><div><b id="spTitle"></b><span id="spArtist"></span></div></div>
         <p class="hint">Add this Redirect URI to your Spotify app: <code id="redirUri"></code></p>
+        <p class="hint">Pause and skip from the charm need Spotify Premium. If you signed in before this update, sign out and in again once to allow it. The sound still comes from your phone: the charm has no speaker.</p>
       </div>
       <div id="manualBox" class="hidden">
         <div class="row"><div class="grow field"><label class="label" for="mTitle">Song</label><input type="text" id="mTitle" placeholder="Song title"></div><div class="grow field"><label class="label" for="mArtist">Artist</label><input type="text" id="mArtist" placeholder="Artist"></div></div>
         <div class="row"><div class="grow field"><label class="label" for="mLen">Length</label><input type="text" id="mLen" value="3:30"></div><div class="grow field"><span class="label">Album art</span><span class="file btn plain">Choose image<input type="file" id="mArtFile" accept="image/*"></span></div></div>
-        <canvas id="artCv" width="120" height="120" class="hidden"></canvas>
+        
         <input type="hidden" id="mColor" value="#f472b6">
         <label class="field switch"><span>Playing</span><input type="checkbox" id="mPlaying" checked></label>
         <div class="actions"><button class="btn" id="sendMusic">Show on charm</button></div>
@@ -387,10 +415,12 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       </div>
     </section>
 
-    <section class="panel" id="pet" style="--tab:#FFC48A;--tilt:-8deg">
-      <span class="badge"><svg><use href="#i-pet"/></svg></span>
-      <h2>The little guy</h2>
-      <p class="lede">Tilt the charm and it leans. Shake it and it gets dizzy. Carry it around and it cheers up, because that counts as a walk.</p>
+    <canvas id="artCv" width="240" height="280" class="hidden"></canvas>
+
+    <section class="panel" id="pet">
+      <span class="tag">DAEMON</span>
+      <h2>Daemon</h2>
+      <p class="lede">The pet that lives in the deck. Tilt the charm and it leans, shake it and it gets dizzy, carry it around and it cheers up.</p>
       <div class="field"><span class="label">Species</span><div class="seg" id="petSp"><button data-v="0" class="on">Cat</button><button data-v="1">Ghost</button><button data-v="2">Frog</button></div></div>
       <div class="row">
         <div class="grow field"><label class="label" for="petName">Name</label><input type="text" id="petName" value="mochi" maxlength="12"></div>
@@ -399,11 +429,11 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       <div class="actions"><button class="btn" id="sendPet">Update pet</button><button class="btn gum" id="feedPet">Feed</button></div>
     </section>
 
-    <section class="panel" id="toys" style="--tab:#9BEBD8;--tilt:9deg">
-      <span class="badge"><svg><use href="#i-toy"/></svg></span>
-      <h2>Tiny decisions</h2>
-      <p class="lede">For when you can’t pick where to eat. Shake the charm to roll, or press the button if shaking a bag in public feels like a lot.</p>
-      <div class="field"><div class="seg" id="toySeg"><button data-v="0" class="on">Magic 8-ball</button><button data-v="1">Dice</button><button data-v="2">Coin</button></div></div>
+    <section class="panel" id="toys">
+      <span class="tag">RNG</span>
+      <h2>Random</h2>
+      <p class="lede">An oracle, two dice and a coin. Shake the charm to roll, or use the button here.</p>
+      <div class="field"><div class="seg" id="toySeg"><button data-v="0" class="on">Oracle</button><button data-v="1">Dice</button><button data-v="2">Coin</button></div></div>
       <div class="actions"><button class="btn" id="rollToy">Roll it</button></div>
       <hr class="divide">
       <h3 class="sub">Timer</h3>
@@ -413,18 +443,18 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <button class="btn" id="startTimer">Start timer</button>
         <button class="link" id="cancelTimer" style="align-self:center">Cancel timer</button>
       </div>
-      <p class="hint">The countdown shows on the clock. When it ends the charm beeps until you tap it.</p>
+      <p class="hint">The countdown sits in the status line on every screen. When it ends the charm beeps until you tap it.</p>
     </section>
 
-    <section class="panel" id="card" style="--tab:var(--sky);--tilt:-7deg">
-      <span class="badge"><svg><use href="#i-card"/></svg></span>
-      <h2>Your name tag</h2>
+    <section class="panel" id="card">
+      <span class="tag">ID</span>
+      <h2>ID card</h2>
       <p class="lede">Press and hold the charm’s screen to flash this. People tap their phone on the charm and your link opens.</p>
       <div class="row">
         <div class="grow field"><label class="label" for="cName">Name</label><input type="text" id="cName" value="your name" maxlength="20"></div>
         <div class="grow field"><label class="label" for="cSub">Line under it</label><input type="text" id="cSub" value="tap for portfolio" maxlength="24"></div>
       </div>
-      <div class="field"><span class="label">Accent</span><div class="swatches" data-target="cAcc" data-colors="#7dd3fc,#c4b5fd,#ff9fb2,#B6F36B,#FFE14A,#ffffff"></div><input type="hidden" id="cAcc" value="#7dd3fc"></div>
+      <div class="field"><span class="label">Accent</span><div class="swatches" data-target="cAcc" data-colors="#00E5FF,#FF2BD6,#FFB000,#39FF14,#c4b5fd,#ffffff"></div><input type="hidden" id="cAcc" value="#00E5FF"></div>
       <div class="actions"><button class="btn" id="sendCard">Show card</button></div>
       <hr class="divide">
       <h3 class="sub">NFC tag</h3>
@@ -433,40 +463,44 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       <p class="hint">Press the button, then hold the tag against the back of your phone. Chrome on Android only.</p>
     </section>
 
-    <section class="panel" id="settings" style="--tab:var(--gum);--tilt:8deg">
-      <span class="badge"><svg><use href="#i-gear"/></svg></span>
-      <h2>Fiddly bits</h2>
+    <section class="panel" id="settings">
+      <span class="tag">SYS</span>
+      <h2>System</h2>
       <p class="lede">Brightness, sounds, sleep and motion.</p>
       <div class="field"><div class="range-row"><span class="label">Brightness</span><span id="brightVal">78%</span></div><input type="range" id="bright" min="8" max="255" value="200"></div>
       <div class="field"><label class="label" for="sleep">Turn the screen off after</label>
         <select id="sleep"><option value="10">10 seconds</option><option value="30" selected>30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="0">Never</option></select>
         <p class="hint">“Never” keeps a clip or background playing all day and drains the battery faster.</p>
       </div>
-      <label class="field switch"><span>Sounds<small>Little beeps when you swipe, tap and roll.</small></span><input type="checkbox" id="optSound" checked></label>
+      <label class="field switch"><span>Scanlines and glitches<small>The old-monitor look. Turn off for a cleaner screen.</small></span><input type="checkbox" id="optFx" checked></label>
+      <label class="field switch"><span>Sounds<small>Short beeps when you swipe, tap and roll.</small></span><input type="checkbox" id="optSound" checked></label>
       <label class="field switch"><span>Shake to wake<small>A firm shake turns the screen back on.</small></span><input type="checkbox" id="optShake" checked></label>
       <label class="field switch"><span>Chime every hour</span><input type="checkbox" id="optChime"></label>
-      <label class="field switch"><span>Reverse swipe direction</span><input type="checkbox" id="swap"></label>
+      <label class="field switch"><span>Reverse sideways swipes</span><input type="checkbox" id="swap"></label>
       <div class="actions"><button class="btn plain" id="syncTime">Sync time</button><button class="btn plain" id="findMe">Make it beep</button></div>
       <hr class="divide">
       <h3 class="sub">Is the snow falling the wrong way?</h3>
       <p class="lede" style="margin-bottom:12px">Put the Snow background on and hold the charm upright. If it doesn’t fall down, flip these until it does.</p>
-      <p class="hint hidden" id="imuNote" style="margin:0 0 12px;color:#b3261e;font-weight:600">The charm’s motion sensor didn’t answer, so tilt and shake are off. Everything else works.</p>
+      <p class="hint hidden" id="imuNote" style="margin:0 0 12px;color:var(--bad);font-weight:600">The charm’s motion sensor didn’t answer, so tilt and shake are off. Everything else works.</p>
       <label class="field switch"><span>Flip sideways</span><input type="checkbox" id="tiltX"></label>
       <label class="field switch"><span>Flip up and down</span><input type="checkbox" id="tiltY"></label>
       <label class="field switch"><span>Swap the two directions</span><input type="checkbox" id="tiltSwap"></label>
     </section>
 
-    <section class="panel" id="cheat" style="--tab:var(--lime);--tilt:-9deg">
-      <span class="badge"><svg><use href="#i-hand"/></svg></span>
-      <h2>Things to do to it</h2>
+    <section class="panel" id="cheat">
+      <span class="tag">INPUT</span>
+      <h2>On the charm itself</h2>
       <p class="lede">No app needed for these.</p>
       <ul class="cheat">
-        <li><b>Swipe sideways</b><span>Next or previous screen.</span></li>
-        <li><b>Swipe up or down</b><span>Brighter or dimmer.</span></li>
-        <li><b>Tap</b><span>Clock: 12 or 24 hour. Text: change style. Clips: next clip. Pet: a pat. Toys: roll.</span></li>
-        <li><b>Double tap the pet</b><span>Feeds it.</span></li>
-        <li><b>Press and hold</b><span>Shows your name tag.</span></li>
-        <li><b>Shake</b><span>Clock: new background. Pet: dizzy. Toys: roll. Asleep: wake up.</span></li>
+        <li><b>Tap a block</b><span>Opens it full screen.</span></li>
+        <li><b>Swipe down</b><span>Closes it, back to the deck. The side button does the same.</span></li>
+        <li><b>Swipe sideways</b><span>Deck: colour. Chrono: backdrop. Audio: next or previous song. Vid: next clip. Msg: style. RNG: switch toy.</span></li>
+        <li><b>Tap inside a block</b><span>Chrono: clock style. Audio: left back, middle pause, right skip. Daemon: a pat. RNG: roll.</span></li>
+        <li><b>Double tap</b><span>Chrono: 12 or 24 hour. Daemon: feeds it.</span></li>
+        <li><b>Swipe up or down on the deck</b><span>Brighter or dimmer.</span></li>
+        <li><b>Press and hold</b><span>Shows your ID card, from anywhere.</span></li>
+        <li><b>Shake</b><span>Deck and Chrono: new backdrop. Daemon: dizzy. RNG: roll. Asleep: wake up.</span></li>
+        <li><b>Side button on the deck</b><span>Screen off.</span></li>
       </ul>
     </section>
   </div>
