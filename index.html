@@ -186,7 +186,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:24px;background:var(--text
 .bg9 span{background:radial-gradient(circle at 25% 30%,var(--acc) 0 2px,transparent 2.5px),radial-gradient(circle at 70% 25%,var(--acc) 0 2px,transparent 2.5px),radial-gradient(circle at 55% 72%,var(--acc) 0 2px,transparent 2.5px),linear-gradient(8deg,transparent 48.5%,var(--acc) 49% 50%,transparent 50.5%),#03050c}
 .bg10 span{background:radial-gradient(circle,var(--acc) 0 1px,transparent 1.4px) 0 0/14px 14px,#000}
 
-/* clip list */
+/* lists */
 .list{margin:0;padding:0;list-style:none;background:var(--deep);box-shadow:0 0 0 1px var(--edge)}
 .list li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--edge)}
 .list li:first-child{border-top:0}
@@ -270,7 +270,6 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
   <symbol id="i-clock" viewBox="0 0 28 28"><circle cx="14" cy="14" r="10.5"/><path d="M14 8v6.5l4 2"/></symbol>
   <symbol id="i-text" viewBox="0 0 28 28"><path d="M5 8h18M5 14h18M5 20h10"/></symbol>
   <symbol id="i-photo" viewBox="0 0 28 28"><rect x="4" y="5" width="20" height="18" rx="4"/><circle cx="10" cy="11" r="2"/><path d="M4.5 20l6-5 4.500 3.500 3-2.500 5.500 4"/></symbol>
-  <symbol id="i-clip" viewBox="0 0 28 28"><rect x="3.500" y="6" width="21" height="16" rx="4"/><path d="M12 10.500v7l6-3.500z"/></symbol>
   <symbol id="i-music" viewBox="0 0 28 28"><path d="M10 20V7.500l12-3v12.500"/><circle cx="7" cy="20" r="3"/><circle cx="19" cy="17" r="3"/></symbol>
   <symbol id="i-pet" viewBox="0 0 28 28"><path d="M6 5l4 4h8l4-4v13a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5z"/><path d="M11 15h.01M17 15h.01M12.500 18.500c1 .800 2 .800 3 0"/></symbol>
   <symbol id="i-toy" viewBox="0 0 28 28"><rect x="4.500" y="4.500" width="19" height="19" rx="5"/><path d="M10 10h.01M18 10h.01M14 14h.01M10 18h.01M18 18h.01"/></symbol>
@@ -327,7 +326,6 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <button class="tile" data-m="6"><svg><use href="#i-toy"/></svg>RNG</button>
         <button class="tile" data-m="1"><svg><use href="#i-text"/></svg>Msg</button>
         <button class="tile" data-m="2"><svg><use href="#i-photo"/></svg>Img</button>
-        <button class="tile" data-m="3"><svg><use href="#i-clip"/></svg>Vid</button>
         <button class="tile" data-m="7"><svg><use href="#i-card"/></svg>ID</button>
         <button class="tile" data-m="9"><svg><use href="#i-eyes"/></svg>Eyes</button>
         <button class="tile" data-m="10"><svg><use href="#i-jbx"/></svg>Jukebox</button>
@@ -427,34 +425,6 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       </div>
     </section>
 
-    <section class="panel" id="clips">
-      <span class="tag">VID</span>
-      <h2>GIFs and videos</h2>
-      <p class="lede">Long ones are fine. Your phone shrinks them first, then the charm keeps a few. Swipe sideways on the charm to flip between them.</p>
-      <div class="split">
-        <div class="frame" id="clipDevice"><canvas id="clipCv" width="240" height="280"></canvas></div>
-        <div>
-          <div class="field"><span class="file btn plain">Choose GIF or video<input type="file" id="clipFile" accept="image/gif,video/*"></span><p class="hint" id="clipInfo">MP4, MOV, WebM or GIF.</p></div>
-          <div class="field"><label class="label" for="clipName">Name</label><input type="text" id="clipName" maxlength="20" placeholder="My clip"></div>
-          <div class="field"><span class="label">Fit</span><div class="seg" id="clipFit"><button data-v="cover" class="on">Fill the screen</button><button data-v="contain">Show all of it</button></div></div>
-          <div id="videoOpts" class="hidden">
-            <div class="field"><div class="range-row"><span class="label">Start at</span><span id="startVal">0:00</span></div><input type="range" id="clipStart" min="0" max="0" step="0.1" value="0"></div>
-            <div class="field"><div class="range-row"><span class="label">Length</span><span id="lenVal">10 s</span></div><input type="range" id="clipLen" min="1" max="60" step="1" value="10"></div>
-            <div class="field"><span class="label">Smoothness</span><div class="seg" id="clipFps"><button data-v="10">10 fps</button><button data-v="15" class="on">15 fps</button><button data-v="20">20 fps</button><button data-v="24">24 fps</button></div></div>
-          </div>
-          <div class="field"><span class="label">Quality</span><div class="seg" id="clipQ"><button data-v="0.55">Smaller</button><button data-v="0.7" class="on">Balanced</button><button data-v="0.85">Sharper</button></div></div>
-          <p class="hint" id="clipEstimate"></p>
-          <div class="actions"><button class="btn" id="sendClip" disabled>Send to charm</button></div>
-          <div class="progress" id="clipProg"><div class="bar-track"><i></i></div><p></p></div>
-        </div>
-      </div>
-      <hr class="divide">
-      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px"><h3 class="sub" style="margin:0">On your charm</h3><button class="link" id="refreshClips">Refresh</button></div>
-      <ul class="list" id="clipList"><li class="empty">Connect to see your saved clips.</li></ul>
-      <div class="storage"><span id="storageText">Storage</span><span id="storageFree"></span></div>
-      <div class="storage-bar"><i id="storageFill"></i></div>
-    </section>
-
     <section class="panel" id="music">
       <span class="tag">AUDIO</span>
       <h2>Now playing</h2>
@@ -517,6 +487,8 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <div class="progress" id="midiProg"><div class="bar-track"><i></i></div><p></p></div>
       </div>
       <ul class="songs" id="mySongs" style="margin-top:16px"><li class="empty">Connect to see the songs on your charm.</li></ul>
+      <div class="storage"><span id="storageText">Storage</span><span id="storageFree"></span></div>
+      <div class="storage-bar"><i id="storageFill"></i></div>
     </section>
 
     <section class="panel" id="torch">
@@ -581,7 +553,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       <div class="field"><div class="range-row"><span class="label">Brightness</span><span id="brightVal">78%</span></div><input type="range" id="bright" min="8" max="255" value="200"></div>
       <div class="field"><label class="label" for="sleep">Turn the screen off after</label>
         <select id="sleep"><option value="10">10 seconds</option><option value="30" selected>30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="0">Never</option></select>
-        <p class="hint">“Never” keeps a clip or background playing all day and drains the battery faster.</p>
+        <p class="hint">“Never” keeps a background playing all day and drains the battery faster.</p>
       </div>
       <label class="field switch"><span>Scanlines and glitches<small>The old-monitor look in the Deck look. Turn off for a cleaner screen.</small></span><input type="checkbox" id="optFx" checked></label>
       <label class="field switch"><span>Sounds<small>Short beeps when you swipe, tap and roll.</small></span><input type="checkbox" id="optSound" checked></label>
@@ -621,7 +593,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
   </div>
 </main>
 
-<footer>Larp Charm, firmware <span id="fw">not connected yet</span>. Keep this page open while photos and clips are sending.</footer>
+<footer>Larp Charm, firmware <span id="fw">not connected yet</span>. Keep this page open while photos and songs are sending.</footer>
 
 <div class="hud" id="hud" role="status"></div>
 

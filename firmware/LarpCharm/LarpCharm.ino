@@ -9,12 +9,12 @@
           tap the front orb to open it
   Swipe down (or the side button) closes whatever is open.
 
-  Blocks: clock, music, eyes, jukebox, pet, dice, message, photo, clips, ID card, torch,
+  Blocks: clock, music, eyes, jukebox, pet, dice, message, photo, ID card, torch,
           and a charging screen that appears when you plug it in.
 
   Touch:
     swipe left / right  -> deck home: colour theme · clock: backdrop (aero: style) · music: next / previous
-                           eyes: expression · jukebox: skip (aero: pick a song) · clips: next · message: style
+                           eyes: expression · jukebox: skip (aero: pick a song) · message: style
     tap                 -> clock: style (double tap 12/24h) · music: left prev, middle play/pause, right next
                            eyes: react (double tap: love) · jukebox: queue a song · pet: pat · dice: roll
     swipe up / down on home -> brightness
@@ -87,7 +87,7 @@ enum Cmd : uint8_t {
   CMD_TEXT        = 0x02, // [style][fg565 hi lo][bg565 hi lo] text
   CMD_TIME        = 0x03, // [epoch u32][tz minutes i16]
   CMD_NOWPLAYING  = 0x04, // [r][g][b][playing][pos u32][dur u32] title 0x1F artist
-  CMD_XFER_BEGIN  = 0x05, // [kind 0=photo 2=clip 3=album art JPEG 240x280][size u32][id u32]
+  CMD_XFER_BEGIN  = 0x05, // [kind 0=photo 3=album art JPEG 240x280 4=song][size u32][id u32]
   CMD_XFER_DATA   = 0x06, // raw bytes
   CMD_XFER_END    = 0x07,
   CMD_BRIGHTNESS  = 0x08, // [0..255]
@@ -97,9 +97,7 @@ enum Cmd : uint8_t {
   CMD_PING        = 0x0C,
   CMD_BUZZ        = 0x0D, // [count]
   CMD_PET_FEED    = 0x0E,
-  CMD_CLIP_LIST   = 0x0F,
-  CMD_CLIP_PLAY   = 0x10, // [id u32]
-  CMD_CLIP_DELETE = 0x11, // [id u32]
+  // 0x0F..0x11 were the video clip commands (removed in 6.0)
   CMD_LOOK        = 0x12, // [background][clock face]([theme])
   CMD_TIMER       = 0x13, // [seconds u16]  (0 = cancel)
   CMD_TOY         = 0x14, // [toy 0=8-ball 1=dice 2=coin][roll 0/1]
@@ -112,7 +110,7 @@ enum Cmd : uint8_t {
   CMD_SONG_DELETE = 0x1B, // [song id 100..107]
 };
 
-enum Mode : uint8_t { M_CLOCK = 0, M_TEXT, M_PHOTO, M_CLIP, M_MUSIC, M_PET, M_TOY, M_CARD, M_DECK, M_EYES, M_JUKE, M_TORCH, M_CHARGE, M_COUNT };
+enum Mode : uint8_t { M_CLOCK = 0, M_TEXT, M_PHOTO, M_CLIP /* removed, number kept */, M_MUSIC, M_PET, M_TOY, M_CARD, M_DECK, M_EYES, M_JUKE, M_TORCH, M_CHARGE, M_COUNT };
 
 // ───────────── Display ─────────────
 Arduino_DataBus *bus   = new Arduino_ESP32SPI(LCD_DC, LCD_CS, LCD_SCK, LCD_MOSI);
@@ -245,16 +243,6 @@ uint32_t petDizzyUntil = 0;
 // storage
 bool fsOK = false;
 
-// clips (MJPEG): header + frames [len u32][delay ms u16][jpeg]
-#pragma pack(push, 1)
-struct ClipHdr { char magic[4]; uint8_t ver; uint8_t flags; uint16_t w, h; uint32_t frames; char name[24]; };
-#pragma pack(pop)
-#define FRAME_MAX (160 * 1024)
-File     clipFile;
-ClipHdr  clipHdr;
-uint32_t clipId = 0;
-uint32_t clipNextAt = 0;
-bool     clipHasFrame = false;
 uint8_t *frameBuf = nullptr;
 uint32_t chromeUntil = 0;
 
@@ -344,7 +332,7 @@ void savePrefs() {
   prefs.putUChar("petsp", petSpecies); prefs.putUShort("petcol", petColor);
   prefs.putString("petname", petName); prefs.putInt("petmood", petMood);
   prefs.putString("cname", cardName); prefs.putString("csub", cardSub);
-  prefs.putUShort("cacc", cardAccent); prefs.putULong("clip", clipId);
+  prefs.putUShort("cacc", cardAccent);
 }
 
 void loadPrefs() {
@@ -365,7 +353,6 @@ void loadPrefs() {
   cardName   = prefs.getString("cname", cardName);
   cardSub    = prefs.getString("csub", cardSub);
   cardAccent = prefs.getUShort("cacc", COL_ICE);
-  clipId     = prefs.getULong("clip", 0);
   bgStyle    = prefs.getUChar("bg", 0) % BG_COUNT;
   faceStyle  = prefs.getUChar("face", 0) % FACE_COUNT;
   toyKind    = prefs.getUChar("toy", 0) % 3;
@@ -1104,103 +1091,6 @@ void aeroOverlayPanel(const char *big, const char *small, float frac) {
 const char *DAYS_T[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 const char *MON_T[]  = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-// ───────────── Clips (MJPEG on FFat) ─────────────
-int jpegDraw(JPEGDRAW *p) {
-  gfx->draw16bitRGBBitmap(p->x, p->y, p->pPixels, p->iWidth, p->iHeight);
-  return 1;
-}
-
-String clipPath(uint32_t id) { return String("/c/") + id + ".clp"; }
-
-void closeClip() {
-  if (clipFile) clipFile.close();
-  clipHasFrame = false;
-}
-
-bool openClip(uint32_t id) {
-  closeClip();
-  if (!fsOK || id == 0) return false;
-  File f = FFat.open(clipPath(id), "r");
-  if (!f) return false;
-  if (f.read((uint8_t *)&clipHdr, sizeof(clipHdr)) != sizeof(clipHdr) || memcmp(clipHdr.magic, "LCLP", 4) != 0 || clipHdr.frames == 0) {
-    f.close();
-    return false;
-  }
-  clipFile = f;
-  clipId = id;
-  clipNextAt = 0;
-  prefs.putULong("clip", clipId);
-  return true;
-}
-
-std::vector<uint32_t> listClipIds() {
-  std::vector<uint32_t> ids;
-  if (!fsOK) return ids;
-  File dir = FFat.open("/c");
-  if (!dir) return ids;
-  File f = dir.openNextFile();
-  while (f) {
-    if (!f.isDirectory()) {
-      String n = f.name();
-      int slash = n.lastIndexOf('/');
-      if (slash >= 0) n = n.substring(slash + 1);
-      if (n.endsWith(".clp")) {
-        uint32_t id = strtoul(n.c_str(), nullptr, 10);
-        if (id) ids.push_back(id);
-      }
-    }
-    f.close();
-    f = dir.openNextFile();
-  }
-  dir.close();
-  std::sort(ids.begin(), ids.end());
-  return ids;
-}
-
-void openNextClip(int dir) {
-  std::vector<uint32_t> ids = listClipIds();
-  if (ids.empty()) { closeClip(); clipId = 0; return; }
-  size_t idx = 0;
-  for (size_t i = 0; i < ids.size(); i++) if (ids[i] == clipId) { idx = i; break; }
-  idx = (idx + ids.size() + dir) % ids.size();
-  if (!openClip(ids[idx]) && ids.size() > 1) openClip(ids[(idx + 1) % ids.size()]);
-}
-
-// Decodes the next frame into the canvas. Returns true if a frame was drawn.
-bool clipTick(bool force) {
-  if (!clipFile || !frameBuf) return false;
-  if (!force && millis() < clipNextAt) return false;
-  for (int attempt = 0; attempt < 2; attempt++) {
-    uint8_t hdr[6];
-    if (clipFile.read(hdr, 6) != 6) { clipFile.seek(sizeof(ClipHdr)); continue; }   // loop
-    uint32_t len = hdr[0] | (hdr[1] << 8) | (hdr[2] << 16) | ((uint32_t)hdr[3] << 24);
-    uint16_t dly = hdr[4] | (hdr[5] << 8);
-    if (len == 0 || len > FRAME_MAX) { clipFile.seek(sizeof(ClipHdr)); continue; }
-    if (clipFile.read(frameBuf, len) != len) { clipFile.seek(sizeof(ClipHdr)); continue; }
-    if (jpeg.openRAM(frameBuf, len, jpegDraw)) {
-      jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
-      jpeg.decode(0, 0, 0);
-      jpeg.close();
-      clipHasFrame = true;
-    }
-    uint32_t now = millis();
-    clipNextAt = (clipNextAt == 0 || now - clipNextAt > 250) ? now + dly : clipNextAt + dly;
-    return true;
-  }
-  return false;
-}
-
-void drawClipScene(bool allowDecode) {
-  if (clipFile) {
-    if (allowDecode) clipTick(true);
-    if (clipHasFrame) {
-      if (millis() < chromeUntil) topBar("//VID", true);
-      return;
-    }
-  }
-  emptyState("//VID", "NO CLIPS", "send a GIF or video", "from the app");
-}
-
 // ───────────── Animated backgrounds ─────────────
 static int8_t sinLut[256];
 struct Star  { float x, y, z; };
@@ -1466,7 +1356,7 @@ const int16_t TILE_X[TILE_COUNT] = {8, 8, 160, 8, 86, 9, 54, 99, 144, 189};
 const int16_t TILE_Y[TILE_COUNT] = {26, 104, 104, 174, 174, 238, 238, 238, 238, 238};
 const int16_t TILE_W[TILE_COUNT] = {224, 146, 72, 72, 146, 42, 42, 42, 42, 42};
 const int16_t TILE_H[TILE_COUNT] = {72, 64, 64, 58, 58, 22, 22, 22, 22, 22};
-const uint8_t TILE_MODE[TILE_COUNT] = {M_CLOCK, M_MUSIC, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CLIP, M_CARD, M_EYES, M_JUKE};
+const uint8_t TILE_MODE[TILE_COUNT] = {M_CLOCK, M_MUSIC, M_PET, M_TOY, M_TEXT, M_PHOTO, M_TORCH, M_CARD, M_EYES, M_JUKE};
 
 int tileAt(int x, int y) {
   for (int i = 0; i < TILE_COUNT; i++) {
@@ -1574,7 +1464,7 @@ void drawDeck() {
   tagLabel("MSG", x + 10, y - 4);
 
   // dock
-  static const char *DOCK[5] = {"IMG", "VID", "ID", "EYE", "JBX"};
+  static const char *DOCK[5] = {"IMG", "LUX", "ID", "EYE", "JBX"};
   for (int i = 0; i < 5; i++) {
     int k = 5 + i;
     hudPanel(TILE_X[k], TILE_Y[k], TILE_W[k], TILE_H[k], ACC, 2);
@@ -2041,11 +1931,11 @@ void drawTicker() {
 
 // ═════════════ v5: Aero home, an orbit of glossy orbs ═════════════
 // Drag sideways (or tilt the charm) to spin it. Tap an orb to bring it to the front, tap the front one to open it.
-#define ORB_N 11
-const uint8_t ORB_MODE[ORB_N] = {M_CLOCK, M_MUSIC, M_EYES, M_JUKE, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CLIP, M_CARD, M_TORCH};
-const char *ORB_NAME[ORB_N] = {"Clock", "Music", "Eyes", "Jukebox", "Pet", "Dice", "Message", "Photo", "Clips", "ID card", "Torch"};
+#define ORB_N 10
+const uint8_t ORB_MODE[ORB_N] = {M_CLOCK, M_MUSIC, M_EYES, M_JUKE, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CARD, M_TORCH};
+const char *ORB_NAME[ORB_N] = {"Clock", "Music", "Eyes", "Jukebox", "Pet", "Dice", "Message", "Photo", "ID card", "Torch"};
 const uint16_t ORB_COL[ORB_N] = { c565(0, 140, 255), c565(255, 70, 160), c565(20, 90, 235), c565(140, 70, 255), c565(255, 140, 30),
-                                  c565(40, 190, 70), c565(0, 185, 190), c565(255, 196, 0), c565(235, 55, 60), c565(80, 90, 220), c565(170, 190, 210) };
+                                  c565(40, 190, 70), c565(0, 185, 190), c565(255, 196, 0), c565(80, 90, 220), c565(170, 190, 210) };
 #define ORB_STEP  (6.2831853f / ORB_N)
 #define ORBIT_CX  120
 #define ORBIT_CY  184
@@ -2203,9 +2093,6 @@ void orbGlyph(int i, int x, int y, int r) {
       gfx->drawRoundRect(x - s, y - s * 7 / 10, s * 2, s * 15 / 10, max(1, s / 5), W);
       gfx->fillTriangle(x - s * 8 / 10, y + s * 6 / 10, x - s / 5, y - s / 10, x + s * 4 / 10, y + s * 6 / 10, W);
       gfx->fillCircle(x + s * 5 / 10, y - s * 3 / 10, max(1, s / 6), W);
-      break;
-    case M_CLIP:
-      gfx->fillTriangle(x - s * 5 / 10, y - s * 8 / 10, x - s * 5 / 10, y + s * 8 / 10, x + s * 9 / 10, y, W);
       break;
     case M_CARD:
       gfx->fillRoundRect(x - s, y - s * 7 / 10, s * 2, s * 14 / 10, max(1, s / 5), W);
@@ -2958,7 +2845,7 @@ void openModule(int m);
 
 const uint8_t QLOC_MODE[QW_NLOC] = {M_CLOCK, M_MUSIC, M_JUKE, M_EYES, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CLIP, M_CARD, M_TORCH};
 const char *const QLOC_SUB[QW_NLOC] = {"Time and date", "Now playing", "Buzzer songs", "Robot eyes", "Your pet", "Oracle, dice, coin",
-                                       "Your message", "Your photo", "Your clips", "Status and NFC", "A bright light"};
+                                       "Your message", "Your photo", "Closed for now", "Status and NFC", "A bright light"};
 const int8_t QHERO_SX[QW_NLOC] = {36, 36, 64, 74, 42, 36, 46, 34, 32, 34, 36};   // where the hero waits, on screen
 const int8_t QDOOR[QW_NLOC][2] = {{64, 92}, {65, 93}, {78, 94}, {64, 80}, {72, 93}, {64, 88}, {41, 74}, {59, 84}, {61, 76}, {63, 86}, {68, 97}};  // the enter arrow
 
@@ -3479,7 +3366,7 @@ void qDynamic(float cam, bool withPet) {
       uint16_t c = on ? c565(255, 240, 160) : c565(150, 90, 40);
       qRect(sx + i, sy, 2, 2, c); qRect(sx + w - 2 - i, sy + h - 2, 2, 2, c);
     }
-    qTextC(QF_BODY, "TONIGHT", sx + w / 2, sy + 2, c565(255, 226, 120));
+    qTextC(QF_BODY, "CLOSED", sx + w / 2, sy + 2, c565(255, 226, 120));
     if (qNight > 0.3f) qGlow(sx + w / 2, sy + h / 2, 50, c565(255, 180, 90), (int)(qNight * 60));
   }
   // the guild's flag waves
@@ -3684,7 +3571,10 @@ void questJump() {
   for (int i = 0; i < 8; i++) { QCoin &c = qCoin[i]; c.x = sx; c.y = sy; c.vx = random(-30, 31) / 10.0f; c.vy = -random(50, 90) / 10.0f; c.t = millis(); }
   sfx(3);
 }
-void questEnter() { if (!qEnterAt) { qEnterAt = millis(); sfx(4); } }
+void questEnter() {
+  if (QLOC_MODE[qShown] == M_CLIP) { toast("The theatre is closed", 1000); return; }
+  if (!qEnterAt) { qEnterAt = millis(); sfx(4); }
+}
 
 void drawQuestHome() {
   if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); qTextC(QF_BODY, "Not enough memory", 120, 130, Q_WHITE); return; }
@@ -3713,7 +3603,7 @@ void drawQuestHome() {
   int bob = ((ms / 300) % 2) * 2;
   qArrow(14 - bob, 140, -1, Q_WHITE); qArrow(226 + bob, 140, 1, Q_WHITE);
   int dx = (int)((qLoc * (float)QW_SPACING + QDOOR[qShown][0] - qCam) * 2);
-  if (!qEnterAt && s >= 1) { qArrow(dx + 2, QDOOR[qShown][1] * 2 - 14 + bob + 2, 0, Q_SHADOW); qArrow(dx, QDOOR[qShown][1] * 2 - 14 + bob, 0, Q_GOLD); }
+  if (!qEnterAt && s >= 1 && QLOC_MODE[qShown] != M_CLIP) { qArrow(dx + 2, QDOOR[qShown][1] * 2 - 14 + bob + 2, 0, Q_SHADOW); qArrow(dx, QDOOR[qShown][1] * 2 - 14 + bob, 0, Q_GOLD); }
   qTextC(QF_BODY, QLOC_SUB[qShown], 120, y + 30, Q_DIM);
 }
 
@@ -4370,7 +4260,10 @@ void roninGo(int dir) {
   rArriveAt = 0; rEnterAt = 0;
   sfx(0);
 }
-void roninEnter() { if (!rEnterAt) { rEnterAt = millis(); sfx(4); } }
+void roninEnter() {
+  if (QLOC_MODE[rShown] == M_CLIP) { toast("The stage is empty tonight", 1000); return; }
+  if (!rEnterAt) { rEnterAt = millis(); sfx(4); }
+}
 void roninSlash() { rSlashAt = millis(); sfx(3); }
 
 void drawRoninHome() {
@@ -4397,7 +4290,7 @@ void drawRoninHome() {
   if (rShown < RW_N - 1) qArrow(120, 44 - bob, 2, Q_WHITE);
   if (rShown > 0 && s >= 1) qArrow(120, 212 + bob, 0, Q_WHITE);
   bool left = rShown % 2 == 0;
-  if (!rEnterAt && s >= 1) qArrow(left ? 80 - bob : 160 + bob, 196, left ? -1 : 1, Q_GOLD);
+  if (!rEnterAt && s >= 1 && QLOC_MODE[rShown] != M_CLIP) qArrow(left ? 80 - bob : 160 + bob, 196, left ? -1 : 1, Q_GOLD);
 }
 
 // charging: he kneels and rests on the landing below the dojo
@@ -4476,7 +4369,6 @@ void drawScene() {
     case M_CLOCK: drawClock(); break;
     case M_TEXT:  drawText();  break;
     case M_PHOTO: drawPhoto(); break;
-    case M_CLIP:  drawClipScene(!xferActive); break;
     case M_MUSIC: drawMusic(); break;
     case M_PET:   drawPet();   break;
     case M_TOY:   drawToy();   break;
@@ -4495,7 +4387,7 @@ void render() {
   if (PIXEL_SKIN) questPost();
   if (mode == M_CLOCK || mode == M_PET || mode == M_TOY || mode == M_CARD) drawTicker();
   bool fx = !skin && fxOn;
-  if (fx && mode != M_PHOTO && mode != M_CLIP && mode != M_MUSIC && mode != M_TORCH) scanlines();
+  if (fx && mode != M_PHOTO && mode != M_MUSIC && mode != M_TORCH) scanlines();
   if (glitchFrames && !skin) { glitchFx(5); glitchFrames--; }
   else if (fx && mode == M_DECK && random(0, 220) == 0) glitchFrames = 2;
   drawAlarm();
@@ -4510,15 +4402,12 @@ void setMode(int m, bool announce = true) {
   (void)announce;
   uint8_t old = mode;
   mode = ((m % M_COUNT) + M_COUNT) % M_COUNT;
+  if (mode == M_CLIP) mode = M_DECK;                     // the clips screen is gone
   if (mode != M_CHARGE && mode != M_TORCH && !idleEyesOn) prefs.putUChar("mode", mode);
   if (old == M_TORCH && mode != M_TORCH && !sleeping) analogWrite(LCD_BL, brightness);
   if (mode == M_TORCH && old != M_TORCH) { analogWrite(LCD_BL, 255); chromeUntil = millis() + 2500; }
   if (mode == M_EYES && old != M_EYES) { chromeUntil = millis() + 1500; tiltBaseX = tiltX; tiltBaseY = tiltY; nextIdleExpr = millis() + 4000; exprShown = 255; }
-  if (mode == M_CLIP) {
-    if (!clipFile) { if (!openClip(clipId)) openNextClip(0); }
-    clipNextAt = 0;
-  }
-  if (mode == M_CLIP || mode == M_PHOTO) chromeUntil = millis() + 1500;
+  if (mode == M_PHOTO) chromeUntil = millis() + 1500;
   if (mode == M_TEXT) typeStart = millis();
   glitchFrames = 3;
 }
@@ -4611,30 +4500,12 @@ void sendStatus(const char *extra = nullptr) {
   char buf[300];
   unsigned long used = fsOK ? (unsigned long)FFat.usedBytes() : 0;
   unsigned long total = fsOK ? (unsigned long)FFat.totalBytes() : 0;
-  snprintf(buf, sizeof(buf), "b=%d;v=%.2f;c=%d;m=%d;fw=%s;fs=%lu,%lu;clip=%lu;lk=%d,%d;imu=%d;toy=%d;th=%d;sk=%d;av=%d;st=%lu;eye=%d;jb=%d;q=%d%s%s",
-           batPct, batVolts, charging ? 1 : 0, mode, FW_VERSION, used, total, (unsigned long)clipId,
+  snprintf(buf, sizeof(buf), "b=%d;v=%.2f;c=%d;m=%d;fw=%s;fs=%lu,%lu;lk=%d,%d;imu=%d;toy=%d;th=%d;sk=%d;av=%d;st=%lu;eye=%d;jb=%d;q=%d%s%s",
+           batPct, batVolts, charging ? 1 : 0, mode, FW_VERSION, used, total,
            bgStyle, faceStyle, imuOK ? 1 : 0, toyKind, theme, skin, aeroVar, (unsigned long)stepsToday,
            exprAuto ? 255 : exprSet, jbPlaying ? jbSong : -1, jbQLen,
            extra ? ";" : "", extra ? extra : "");
   notifyText(buf);
-}
-
-void sendClipList() {
-  std::vector<uint32_t> ids = listClipIds();
-  for (uint32_t id : ids) {
-    File f = FFat.open(clipPath(id), "r");
-    if (!f) continue;
-    ClipHdr h;
-    if (f.read((uint8_t *)&h, sizeof(h)) == sizeof(h) && memcmp(h.magic, "LCLP", 4) == 0) {
-      char nm[25]; memcpy(nm, h.name, 24); nm[24] = 0;
-      char buf[96];
-      snprintf(buf, sizeof(buf), "item=%lu,%lu,%lu,%s", (unsigned long)id, (unsigned long)h.frames, (unsigned long)f.size(), nm);
-      notifyText(buf);
-      delay(25);
-    }
-    f.close();
-  }
-  sendStatus("list=end");
 }
 
 // ───────────── Transfers ─────────────
@@ -4683,17 +4554,6 @@ void xferBegin(const uint8_t *p, uint16_t len) {
     else if (slot < 0) why = "full";
     else if (xferSize <= sizeof(SongHdr) || xferSize > sizeof(SongHdr) + MY_SONG_MAX * 2) why = "bad";
     else { xferId = slot; FFat.remove("/s/tmp.part"); xferFile = FFat.open("/s/tmp.part", "w"); ok = (bool)xferFile && xferBuf; if (!ok) why = "open"; }
-  }
-  else if (xferKind == 2) {
-    if (!fsOK) why = "nofs";
-    else if (xferId == 0 || xferSize <= sizeof(ClipHdr)) why = "bad";
-    else if ((uint64_t)xferSize + 65536 > (uint64_t)FFat.freeBytes()) why = "space";
-    else {
-      FFat.remove("/c/tmp.part");
-      xferFile = FFat.open("/c/tmp.part", "w");
-      ok = (bool)xferFile && xferBuf;
-      if (!ok) why = "open";
-    }
   }
   if (!ok) { char b[32]; snprintf(b, sizeof(b), "xfer=err;why=%s", why); sendStatus(b); return; }
   xferActive = true;
@@ -4749,21 +4609,6 @@ void xferEnd() {
     scanMySongs();
     jbCat = MY_CAT; jbSelId = 100 + xferId;
     toast(skin ? "Song added" : "song added", 1200);
-  } else {
-    xferFlush();
-    xferFile.close();
-    // validate
-    File f = FFat.open("/c/tmp.part", "r");
-    ClipHdr h;
-    bool ok = f && f.read((uint8_t *)&h, sizeof(h)) == sizeof(h) && memcmp(h.magic, "LCLP", 4) == 0 && h.frames > 0;
-    if (f) f.close();
-    if (!ok) { xferCleanup(); sendStatus("xfer=err;why=format"); return; }
-    if (clipId == xferId) closeClip();
-    FFat.remove(clipPath(xferId));
-    FFat.rename("/c/tmp.part", clipPath(xferId));
-    xferActive = false;
-    openClip(xferId);
-    setMode(M_CLIP, false);
   }
   char b[32]; snprintf(b, sizeof(b), "ack=%lu", (unsigned long)xferGot);
   notifyText(b);
@@ -4965,23 +4810,6 @@ void handlePacket(const uint8_t *d, uint16_t n) {
 
     case CMD_PING:      sendStatus(); break;
     case CMD_BUZZ:      beep(len >= 1 ? constrain((int)p[0], 1, 10) : 3); break;
-    case CMD_CLIP_LIST: sendClipList(); break;
-
-    case CMD_CLIP_PLAY:
-      if (len >= 4 && openClip(rdU32(p))) setMode(M_CLIP, false);
-      sendStatus();
-      break;
-
-    case CMD_CLIP_DELETE:
-      if (len >= 4 && fsOK) {
-        uint32_t id = rdU32(p);
-        bool wasCurrent = (id == clipId);
-        if (wasCurrent) closeClip();
-        FFat.remove(clipPath(id));
-        if (wasCurrent) { clipId = 0; openNextClip(0); }
-      }
-      sendClipList();
-      break;
   }
 }
 
@@ -5094,11 +4922,6 @@ void setSkin(uint8_t s) {
   lastFrame = 0;
 }
 
-void showClipName() {
-  if (clipFile) { char nm[25]; memcpy(nm, clipHdr.name, 24); nm[24] = 0; toast(asciiOnly(String(nm)).substring(0, 14), 900); }
-  chromeUntil = millis() + 1500;
-}
-
 // Sideways swipes act on whatever is open. dir +1 = finger moved left.
 void onSwipe(int dir) {
   if (swapSwipe) dir = -dir;
@@ -5122,7 +4945,6 @@ void onSwipe(int dir) {
       marqueeX = SCR_W; typeStart = millis();
       sfx(1);
       break;
-    case M_CLIP:  openNextClip(dir); showClipName(); break;
     case M_MUSIC: mediaCmd(dir > 0 ? 1 : 2); break;
     case M_TOY:
       toyKind = (toyKind + 3 + dir) % 3; toyHasResult = false; toyRollAt = 0;
@@ -5207,7 +5029,6 @@ void onTap(bool dbl) {
       marqueeX = SCR_W; typeStart = millis();
       break;
     case M_PHOTO: chromeUntil = millis() + 1500; break;
-    case M_CLIP:  openNextClip(1); showClipName(); break;
     case M_MUSIC: mediaCmd(tch.x0 < 80 ? 2 : tch.x0 > 160 ? 1 : 0); break;
     case M_PET:
       petMood = min(100, petMood + (dbl ? 25 : 3));
@@ -5532,26 +5353,22 @@ void setup() {
   artBuf   = (uint16_t *)ps_malloc(FB_BYTES);
   artJpg   = (uint8_t *)ps_malloc(ART_JPG_MAX);
   prevFb   = (uint16_t *)ps_malloc(FB_BYTES);
-  frameBuf = (uint8_t *)ps_malloc(FRAME_MAX);
   aeroBg   = (uint16_t *)ps_malloc(FB_BYTES);
   homeBase = (uint16_t *)ps_malloc(FB_BYTES);
   jbNotesBuf = (uint8_t *)ps_malloc(MY_SONG_MAX * 2);
   initAeroBubbles();
-  bootLine("memory", (photoBuf && artBuf && artJpg && prevFb && frameBuf) ? "PSRAM ok" : "low", photoBuf && artBuf && artJpg && prevFb && frameBuf);
+  bootLine("memory", (photoBuf && artBuf && artJpg && prevFb) ? "PSRAM ok" : "low", photoBuf && artBuf && artJpg && prevFb);
   xferBuf  = (uint8_t *)malloc(XBUF_SZ);
   if (!xferBuf) xferBuf = (uint8_t *)ps_malloc(XBUF_SZ);
 
   fsOK = FFat.begin(true);
   if (!fsOK) Serial.println("FFat mount failed - check Partition Scheme (16M Flash 3MB APP/9.9MB FATFS)");
   if (fsOK) {
-    if (!FFat.exists("/c")) FFat.mkdir("/c");
     if (!FFat.exists("/s")) FFat.mkdir("/s");
     FFat.remove("/s/tmp.part");
-    FFat.remove("/c/tmp.part");
     File f = FFat.open("/photo.bin", "r");
     if (f && photoBuf && f.size() == FB_BYTES) { f.read((uint8_t *)photoBuf, FB_BYTES); photoLoaded = true; }
     if (f) f.close();
-    if (!openClip(clipId)) openNextClip(0);
   }
   scanMySongs();
   bootLine("storage", fsOK ? "FFat ok" : "not mounted", fsOK);
@@ -5636,17 +5453,6 @@ void loop() {
   if (bleConnected && (millis() - lastStatus > 15000 || jbDirty)) { lastStatus = millis(); jbDirty = false; sendStatus(); }
 
   if (sleeping) { delay(10); return; }
-
-  if (mode == M_CLIP && clipFile && !xferActive && !alarmUntil) {
-    // clips run at their own frame rate
-    if (clipTick(false)) {
-      if (millis() < chromeUntil) topBar("//VID", true);
-      drawToast();
-      gfx->flush();
-      frameNo++;
-    }
-    return;
-  }
 
   uint32_t interval = (xferActive && xferKind != 3) ? 150 : 33;
   if (mode == M_DECK && skin == SKIN_AERO && orbitMoving()) interval = 15;      // spin as smoothly as the screen allows
