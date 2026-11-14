@@ -250,6 +250,8 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 .queue{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--soft);font-size:14.5px}
 .queue-btns{display:flex;gap:8px}
 @media (max-width:560px){ .songs li{flex-wrap:wrap} .songs li span{flex-basis:100%} .songs li .listen{margin-left:-8px;margin-right:auto} }
+.cats{margin-bottom:12px}
+.cats button{flex:1 1 auto}
 .steps{margin:18px 0 0;color:var(--soft)}
 .steps b{color:var(--text);font-size:20px}
 @media (prefers-reduced-motion:reduce){ *{transition:none !important} html{scroll-behavior:auto} }
@@ -491,10 +493,25 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
     <section class="panel" id="jukebox">
       <span class="tag">JUKEBOX</span>
       <h2>Jukebox</h2>
-      <p class="lede">Ten old tunes the charm plays on its buzzer. Play one now, or line a few up and it plays them in order.</p>
+      <p class="lede">Tunes the charm plays on its buzzer, sorted into shelves. Play one now, or line a few up and it plays them in order.</p>
+      <div class="seg cats" id="catSeg"></div>
       <ul class="songs" id="songList"></ul>
       <div class="queue"><span id="jbNow">Nothing playing.</span><span class="queue-btns"><button class="btn plain sm" id="jbSkip">Skip</button><button class="btn plain sm" id="jbStop">Stop</button></span></div>
-      <p class="hint">“Listen” plays it here in your browser so you know what you’re getting. The buzzer can only play one note at a time, so these are melodies, not full songs.</p>
+      <p class="hint">“Listen” plays it here in your browser so you know what you’re getting. The buzzer can only play one note at a time, so these are melodies, not full songs. Pixel originals are new tunes written for the charm in an old-game style.</p>
+      <hr class="divide">
+      <h3 class="sub">Add your own</h3>
+      <p class="lede" style="margin-bottom:14px">Pick a MIDI file of any song you like. The page pulls out the melody, and the charm keeps up to eight of them on the “My songs” shelf.</p>
+      <div class="field"><span class="file btn plain">Choose MIDI file<input type="file" id="midiFile" accept=".mid,.midi,audio/midi,audio/x-midi"></span><p class="hint" id="midiInfo">.mid or .midi</p></div>
+      <div id="midiOpts" class="hidden">
+        <div class="row">
+          <div class="grow field"><label class="label" for="midiName">Name</label><input type="text" id="midiName" maxlength="23"></div>
+          <div class="grow field"><label class="label" for="midiPart">Part to play</label><select id="midiPart"></select></div>
+        </div>
+        <div class="field"><span class="label">Pitch</span><div class="seg" id="midiOct"><button data-v="-12">Lower</button><button data-v="0" class="on">As written</button><button data-v="12">Higher</button><button data-v="24">Much higher</button></div><p class="hint">The buzzer sounds best fairly high, so the page already lifts low tunes.</p></div>
+        <div class="actions"><button class="btn plain" id="midiListen">Listen</button><button class="btn" id="midiSend">Send to charm</button></div>
+        <div class="progress" id="midiProg"><div class="bar-track"><i></i></div><p></p></div>
+      </div>
+      <ul class="songs" id="mySongs" style="margin-top:16px"><li class="empty">Connect to see the songs on your charm.</li></ul>
     </section>
 
     <section class="panel" id="torch">
@@ -586,8 +603,8 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <li><b>Deck: tap a block</b><span>Opens it full screen.</span></li>
         <li><b>Aero: drag sideways or tilt</b><span>Spins the ring. Tap the front orb to open it, or any other orb to bring it to the front.</span></li>
         <li><b>Swipe down</b><span>Closes whatever is open. The side button does the same.</span></li>
-        <li><b>Swipe sideways</b><span>Deck home: colour. Clock: backdrop or style. Music: next or previous song. Eyes: next mood. Jukebox: skip, or pick a song in Aero.</span></li>
-        <li><b>Tap inside a block</b><span>Clock: clock style. Music: left back, middle pause, right skip. Eyes: a reaction. Jukebox: queue a song. Dice: roll.</span></li>
+        <li><b>Swipe sideways</b><span>Deck home: colour. Clock: backdrop or style. Music: next or previous song. Eyes: next mood. Jukebox: next shelf, or next song in Aero.</span></li>
+        <li><b>Tap inside a block</b><span>Clock: clock style. Music: left back, middle pause, right skip. Eyes: a reaction. Jukebox: tap a song to play or queue it, tap the bottom strip to stop or skip. Dice: roll.</span></li>
         <li><b>Double tap</b><span>Clock: 12 or 24 hour. Pet: feeds it. Eyes: love.</span></li>
         <li><b>Press and hold anywhere else</b><span>Shows your ID card.</span></li>
         <li><b>Shake</b><span>Home and clock: new backdrop. Pet and eyes: dizzy. Dice: roll. Jukebox: a random song. Asleep: wake up.</span></li>

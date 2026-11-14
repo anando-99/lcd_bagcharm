@@ -2,7 +2,7 @@
 const SVC = '6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const RX  = '6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const ST  = '6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee';
-const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, CLIP_LIST:15, CLIP_PLAY:16, CLIP_DELETE:17, LOOK:18, TIMER:19, TOY:20, THEME:21, SKIN:22, EYES:23, TUNE:24, TORCH:25};
+const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, CLIP_LIST:15, CLIP_PLAY:16, CLIP_DELETE:17, LOOK:18, TIMER:19, TOY:20, THEME:21, SKIN:22, EYES:23, TUNE:24, TORCH:25, SONG_LIST:26, SONG_DELETE:27};
 const MODE = {CLOCK:0, TEXT:1, PHOTO:2, CLIP:3, MUSIC:4, PET:5, TOY:6, CARD:7, DECK:8, EYES:9, JUKE:10, TORCH:11, CHARGE:12};
 const THEMES = ['#00E5FF', '#FF2BD6', '#FFB000', '#39FF14', '#FF3B30', '#C8DCFF'];
 const ui = window.ui = { mode: 8, bg: 9, face: 0, toy: 0, theme: 0, playing: false, artReady: false, skin: 0, aero: 0, expr: 255, torch: 0, jbSong: -1, jbQueue: 0, charging: false, bat: 76 };
@@ -62,6 +62,7 @@ async function connectGatt(){
   await syncTime();
   await write(packet(CMD.PING));
   await refreshClips();
+  await refreshMySongs();
   hud('Connected to ' + (device.name || 'Larp Charm'));
   if (spotifyToken()) startSpotifyLoop();
 }
@@ -93,6 +94,7 @@ function onStatus(s){
     return;
   }
   if (s.startsWith('media=')) { mediaControl(s.slice(6)); return; }
+  if (s.startsWith('song=')) { const p = s.slice(5).split(','); if (songCollect) songCollect.push({ id: +p[0], n: +p[1], name: p.slice(2).join(',') || 'Song' }); return; }
   if (s.startsWith('item=')) {
     const p = s.slice(5).split(',');
     if (listCollect) listCollect.push({ id: +p[0], frames: +p[1], bytes: +p[2], name: p.slice(3).join(',') || 'Clip' });
@@ -112,11 +114,13 @@ function onStatus(s){
   if (kv.imu !== undefined) $('imuNote').classList.toggle('hidden', kv.imu === '1');
   if (kv.fs) { const [u, t] = kv.fs.split(',').map(Number); state.fsUsed = u; state.fsTotal = t; renderStorage(); }
   if (kv.clip !== undefined) { state.clipId = +kv.clip; renderClipList(); }
+  if (kv.songs === 'end' && songCollect) { mySongs = songCollect; songCollect = null; renderMySongs(); }
+  if (kv.songs === 'changed') refreshMySongs();
   if (kv.list === 'end' && listCollect) { state.clips = listCollect; listCollect = null; renderClipList(); }
   if (kv.xfer && xferWaiter) {
     const w = xferWaiter; xferWaiter = null;
     if (kv.xfer === 'ok') w.resolve();
-    else w.reject(new Error({ space: 'Not enough space on the charm. Delete a clip first.', nofs: 'Storage isn’t set up on the charm. Update its firmware.', format: 'The clip didn’t arrive intact. Try again.' }[kv.why] || 'Transfer failed. Try again.'));
+    else w.reject(new Error({ full: 'The charm already has eight of your songs. Delete one first.', space: 'Not enough space on the charm. Delete a clip first.', nofs: 'Storage isn’t set up on the charm. Update its firmware.', format: 'The clip didn’t arrive intact. Try again.' }[kv.why] || 'Transfer failed. Try again.'));
   }
 }
 
@@ -654,26 +658,47 @@ document.querySelectorAll('#exprs button').forEach(b => b.onclick = () => {
 });
 
 // ─────────── Jukebox ───────────
-const SONG_INFO = ['Winter song, 1857', 'Christmas carol', 'Welsh carol', 'Christmas carol', 'Beethoven', 'Beethoven', 'Russian folk song', 'Nursery rhyme', 'Birthdays', 'Nursery rhyme'];
+const SONG_INFO = { 'Jingle Bells': 'Winter song, 1857', 'We Wish You a Merry Christmas': 'English carol', 'Deck the Halls': 'Welsh carol', 'Silent Night': 'Austrian carol, 1818',
+  'O Christmas Tree': 'German carol', 'Joy to the World': 'Carol, 1839', 'Twinkle Twinkle': 'Nursery rhyme', 'Mary Had a Little Lamb': 'Nursery rhyme', 'Happy Birthday': 'Birthdays',
+  'Row Row Row Your Boat': 'Round', 'London Bridge': 'Nursery rhyme', 'Old MacDonald': 'Nursery rhyme', 'Ode to Joy': 'Ninth Symphony', 'Fur Elise': 'Bagatelle in A minor',
+  'Fifth Symphony': 'The famous four notes', 'Eine kleine Nachtmusik': 'Mozart', 'Hall of the Mountain King': 'Grieg', "Brahms' Lullaby": 'Brahms', 'Korobeiniki': 'Russian folk song',
+  'Greensleeves': 'English folk song', 'Village Morning': 'Cosy waltz', 'Overworld Run': 'Upbeat adventure', "Hero's March": 'Fanfare', 'Save Point': 'Calm arpeggios',
+  'Boss Battle': 'Fast and tense', 'Night Market': 'Laid back', 'Level Clear': 'Short jingle' };
+let songCat = +(localStorage.getItem('o_songcat') || 0), mySongs = [], songCollect = null;
+const songSecs = sg => sg.notes.filter((_, k) => k % 2).reduce((a, b) => a + b, 0) * 15 / sg.bpm;
+function songRow(id, name, sub, onListen){
+  const li = document.createElement('li'); li.dataset.id = id;
+  const nm = document.createElement('span'); nm.textContent = name;
+  const sm = document.createElement('small'); sm.textContent = sub; nm.append(sm); li.append(nm);
+  if (onListen) { const listen = document.createElement('button'); listen.className = 'listen'; listen.textContent = 'Listen'; listen.onclick = () => onListen(listen); li.append(listen); }
+  const play = document.createElement('button'); play.className = 'btn sm'; play.textContent = 'Play';
+  play.onclick = act(async () => { await write(packet(CMD.TUNE, [1, id])); setActiveMode(MODE.JUKE); hud('Playing ' + name); });
+  const add = document.createElement('button'); add.className = 'btn plain sm'; add.textContent = 'Queue';
+  add.onclick = act(async () => { await write(packet(CMD.TUNE, [2, id])); hud(ui.jbSong >= 0 ? 'Added to the queue' : 'Playing ' + name); });
+  li.append(play, add);
+  return li;
+}
 function renderSongs(){
+  const cats = window.SONG_CATS || [], seg = $('catSeg');
+  if (!seg.children.length) cats.forEach((c, i) => { const b = document.createElement('button'); b.textContent = c; b.dataset.v = i; b.onclick = () => { songCat = i; localStorage.setItem('o_songcat', i); $('songList').innerHTML = ''; renderSongs(); }; seg.append(b); });
+  [...seg.children].forEach(b => b.classList.toggle('on', +b.dataset.v === songCat));
   const ul = $('songList');
-  if (!ul.children.length) {
-    (window.SONGS || []).forEach((sg, i) => {
-      const li = document.createElement('li');
-      const nm = document.createElement('span'); nm.textContent = sg.name;
-      const sm = document.createElement('small'); const secs = sg.notes.filter((_, k) => k % 2).reduce((a, b) => a + b, 0) * 15 / sg.bpm;
-      sm.textContent = `${SONG_INFO[i] || ''}, ${Math.round(secs)} s`; nm.append(sm);
-      const listen = document.createElement('button'); listen.className = 'listen'; listen.textContent = 'Listen'; listen.onclick = () => previewSong(i, listen);
-      const play = document.createElement('button'); play.className = 'btn sm'; play.textContent = 'Play';
-      play.onclick = act(async () => { await write(packet(CMD.TUNE, [1, i])); setActiveMode(MODE.JUKE); hud('Playing ' + sg.name); });
-      const add = document.createElement('button'); add.className = 'btn plain sm'; add.textContent = 'Queue';
-      add.onclick = act(async () => { await write(packet(CMD.TUNE, [2, i])); hud(ui.jbSong >= 0 ? 'Added to the queue' : 'Playing ' + sg.name); });
-      li.append(nm, listen, play, add); ul.append(li);
-    });
+  if (!ul.children.length) (window.SONGS || []).forEach((sg, i) => { if (sg.cat === songCat) ul.append(songRow(i, sg.name, `${SONG_INFO[sg.name] || ''}, ${Math.round(songSecs(sg))} s`, btn => previewSong(sg, btn, i))); });
+  document.querySelectorAll('#songList li, #mySongs li').forEach(li => li.classList.toggle('playing', +li.dataset.id === ui.jbSong));
+  const name = ui.jbSong >= 100 ? (mySongs.find(m => m.id === ui.jbSong) || {}).name : ((window.SONGS || [])[ui.jbSong] || {}).name;
+  $('jbNow').textContent = ui.jbSong >= 0 && name ? `Playing ${name}` + (ui.jbQueue ? `, ${ui.jbQueue} more in the queue.` : '.') : 'Nothing playing.';
+}
+async function refreshMySongs(){ if (!rxChar) return; songCollect = []; await write(packet(CMD.SONG_LIST)); }
+function renderMySongs(){
+  const ul = $('mySongs'); ul.innerHTML = '';
+  if (!mySongs.length) { ul.innerHTML = '<li class="empty">No songs of your own on the charm yet.</li>'; return; }
+  for (const m of mySongs) {
+    const li = songRow(m.id, m.name, `${m.n} notes, on the charm`);
+    const del = document.createElement('button'); del.className = 'btn plain sm'; del.textContent = 'Delete';
+    del.onclick = act(async () => { if (!confirm(`Delete “${m.name}” from your charm?`)) return; await write(packet(CMD.SONG_DELETE, [m.id])); });
+    li.append(del); ul.append(li);
   }
-  [...ul.children].forEach((li, i) => li.classList.toggle('playing', i === ui.jbSong));
-  const sg = (window.SONGS || [])[ui.jbSong];
-  $('jbNow').textContent = sg ? `Playing ${sg.name}` + (ui.jbQueue ? `, ${ui.jbQueue} more in the queue.` : '.') : 'Nothing playing.';
+  renderSongs();
 }
 renderSongs();
 $('jbSkip').onclick = act(() => write(packet(CMD.TUNE, [3])));
@@ -681,10 +706,10 @@ $('jbStop').onclick = act(() => write(packet(CMD.TUNE, [0])));
 
 // plays a melody in the browser with a square wave, close to how the buzzer sounds
 let audio = null, previewing = null;
-function previewSong(i, btn){
+function previewSong(sg, btn, i = -1){
   if (previewing) { previewing.stop(); if (previewing.btn === btn) { previewing = null; return; } }
   audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-  const sg = window.SONGS[i], g = audio.createGain(); g.gain.value = 0.04; g.connect(audio.destination);
+  const g = audio.createGain(); g.gain.value = 0.04; g.connect(audio.destination);
   let t = audio.currentTime + 0.05; const oscs = [];
   for (let k = 0; k < sg.notes.length; k += 2) {
     const m = sg.notes[k], d = sg.notes[k + 1] * 15 / sg.bpm;
@@ -702,3 +727,79 @@ function previewSong(i, btn){
 seg('torchSeg', v => { ui.torch = +v; if (ui.mode === MODE.TORCH && rxChar) write(packet(CMD.TORCH, [1, ui.torch])).catch(() => {}); });
 $('torchOn').onclick = act(async () => { setActiveMode(MODE.TORCH); await write(packet(CMD.TORCH, [1, ui.torch])); });
 $('torchOff').onclick = act(async () => { setActiveMode(MODE.DECK); await write(packet(CMD.TORCH, [0])); });
+
+// ─────────── Your own songs: MIDI file → melody → charm ───────────
+// Reads a standard MIDI file, keeps the highest note of the chosen part at each moment, and rounds to sixteenth notes.
+function parseMidi(buf){
+  const d = new DataView(buf); let p = 0;
+  const str = n => { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(d.getUint8(p++)); return s; };
+  const u32 = () => { const v = d.getUint32(p); p += 4; return v; }, u16 = () => { const v = d.getUint16(p); p += 2; return v; };
+  const vlq = () => { let v = 0, b; do { b = d.getUint8(p++); v = (v << 7) | (b & 127); } while (b & 128); return v; };
+  if (str(4) !== 'MThd') throw new Error('That isn’t a MIDI file.');
+  const hl = u32(); u16(); const ntr = u16(), div = u16(); p = 8 + hl;
+  if (div & 0x8000) throw new Error('This MIDI file uses a timing format the page can’t read.');
+  let tempo = 500000; const parts = {}, names = {};
+  for (let t = 0; t < ntr && p < d.byteLength; t++) {
+    if (str(4) !== 'MTrk') break;
+    const end = u32() + p; let tick = 0, run = 0; const on = {};
+    while (p < end) {
+      tick += vlq(); let st = d.getUint8(p);
+      if (st < 0x80) st = run; else { p++; run = st; }
+      if (st === 0xFF) { const ty = d.getUint8(p++), len = vlq();
+        if (ty === 0x51 && tempo === 500000) tempo = (d.getUint8(p) << 16) | (d.getUint8(p + 1) << 8) | d.getUint8(p + 2);
+        if (ty === 0x03) { let s = ''; for (let i = 0; i < len; i++) s += String.fromCharCode(d.getUint8(p + i)); names[t] = s.trim(); }
+        p += len; continue; }
+      if (st === 0xF0 || st === 0xF7) { p += vlq(); continue; }
+      const ty = st & 0xF0, ch = st & 15, a1 = d.getUint8(p++), a2 = (ty === 0xC0 || ty === 0xD0) ? 0 : d.getUint8(p++);
+      const key = t + ':' + ch;
+      if (ty === 0x90 && a2 > 0) { on[ch + ':' + a1] = tick; (parts[key] = parts[key] || []).push({ t: tick, n: a1, e: tick + div }); }
+      else if (ty === 0x80 || (ty === 0x90 && a2 === 0)) { const s = on[ch + ':' + a1]; if (s !== undefined) { const list = parts[key] || []; for (let i = list.length - 1; i >= 0; i--) if (list[i].n === a1 && list[i].t === s) { list[i].e = tick; break; } } }
+    }
+    p = end;
+  }
+  const list = Object.entries(parts).filter(([k]) => !k.endsWith(':9')).map(([k, notes]) => ({ key: k, notes, label: (names[k.split(':')[0]] || 'Part ' + (+k.split(':')[0] + 1)) + ` (${notes.length} notes)` }))
+    .sort((x, y) => y.notes.length - x.notes.length);
+  if (!list.length) throw new Error('No notes found in that file.');
+  return { div, bpm: Math.round(60e6 / tempo), parts: list };
+}
+function melodyFrom(part, div, shift){
+  const step = div / 4, byStart = new Map();
+  for (const n of part.notes) { const q = Math.round(n.t / step); const o = byStart.get(q); if (!o || n.n > o.n) byStart.set(q, { n: n.n, e: Math.max(1, Math.round(n.e / step)) }); }
+  const starts = [...byStart.keys()].sort((x, y) => x - y), out = [];
+  let pitches = starts.map(s => byStart.get(s).n).sort((x, y) => x - y), med = pitches[pitches.length >> 1] || 72, auto = 0;
+  while (med + auto < 66) auto += 12;
+  if (starts[0] > 0) out.push(0, Math.min(255, starts[0]));
+  for (let i = 0; i < starts.length && out.length < 3000; i++) {
+    const s = starts[i], nx = i + 1 < starts.length ? starts[i + 1] : byStart.get(s).e, nt = byStart.get(s);
+    const len = Math.max(1, Math.min(nx, Math.max(nt.e, s + 1)) - s);
+    let m = nt.n + auto + shift; while (m > 100) m -= 12; while (m < 40) m += 12;
+    out.push(m, Math.min(255, len));
+    const gap = nx - s - len; if (gap > 0) out.push(0, Math.min(255, gap));
+  }
+  return out.slice(0, 3000);
+}
+let midi = null;
+seg('midiOct');
+$('midiFile').onchange = act(async e => {
+  const f = e.target.files[0]; if (!f) return;
+  midi = parseMidi(await f.arrayBuffer());
+  $('midiName').value = f.name.replace(/\.[^.]+$/, '').slice(0, 23);
+  $('midiPart').innerHTML = ''; midi.parts.forEach((pt, i) => { const o = document.createElement('option'); o.value = i; o.textContent = pt.label; $('midiPart').append(o); });
+  $('midiInfo').textContent = `${midi.parts.length} part${midi.parts.length > 1 ? 's' : ''}, ${midi.bpm} beats a minute. The busiest part is picked; choose another if it isn’t the tune.`;
+  $('midiOpts').classList.remove('hidden');
+});
+function currentMidiSong(){
+  if (!midi) throw new Error('Choose a MIDI file first.');
+  const notes = melodyFrom(midi.parts[+$('midiPart').value || 0], midi.div, +$('midiOct').value);
+  return { name: ascii($('midiName').value || 'My song').slice(0, 23), bpm: Math.max(30, Math.min(255, midi.bpm)), notes };
+}
+$('midiListen').onclick = act(async () => previewSong(currentMidiSong(), $('midiListen')));
+$('midiSend').onclick = act(async () => {
+  const sg = currentMidiSong();
+  if (sg.notes.length / 2 > 1500) hud('That’s a long one, so only the first 1500 notes go to the charm.');
+  const n = Math.min(1500, sg.notes.length / 2), out = new Uint8Array(32 + n * 2);
+  out.set(enc.encode('LSNG'), 0); out[4] = 1; out[5] = sg.bpm; out[6] = n & 255; out[7] = n >> 8; out.set(enc.encode(sg.name), 8); out.set(sg.notes.slice(0, n * 2), 32);
+  const pr = progress('midiProg'); pr.show('Sending…');
+  try { await sendBlob(4, out, 0, f => pr.set(f, `Sending ${Math.round(f * 100)}%`)); pr.set(1, 'On your charm, in My songs.'); await refreshMySongs(); }
+  catch (e) { pr.set(0, e.message); throw e; } finally { pr.hide(2500); }
+});
