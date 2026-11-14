@@ -49,6 +49,7 @@
 // shape of one eye (kept up here so the IDE's generated prototypes can see it)
 struct EyeShape { float w, h, rad, lidT, slope, lidB; };
 struct OrbSprite { uint16_t *px; uint8_t *a; };
+#include "questart.h"   // Quest art (its types must be visible to the IDE's generated prototypes)
 
 // ───────────── Pins (Waveshare docs) ─────────────
 #define LCD_DC    4
@@ -2950,7 +2951,6 @@ void stepDayCheck() {
 // Everything here is drawn at half resolution: one art pixel is a 2x2 block on the screen.
 // The village loops: walk left or right to visit a landmark, tap it to go in.
 // Light follows the real time of day (dawn, day, golden hour, dusk, night).
-#include "questart.h"
 void openModule(int m);
 
 const uint8_t QLOC_MODE[QW_NLOC] = {M_CLOCK, M_MUSIC, M_JUKE, M_EYES, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CLIP, M_CARD, M_TORCH};
