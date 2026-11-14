@@ -50,6 +50,7 @@
 struct EyeShape { float w, h, rad, lidT, slope, lidB; };
 struct OrbSprite { uint16_t *px; uint8_t *a; };
 #include "questart.h"   // Quest art (its types must be visible to the IDE's generated prototypes)
+#include "roninart.h"   // Ronin art
 
 // ───────────── Pins (Waveshare docs) ─────────────
 #define LCD_DC    4
@@ -168,7 +169,9 @@ Preferences prefs;
 uint8_t  mode = M_DECK;
 uint8_t  theme = 0;
 #define SKIN_QUEST 2
-#define SKIN_COUNT 3
+#define SKIN_RONIN 3
+#define SKIN_COUNT 4
+#define PIXEL_SKIN (skin >= SKIN_QUEST)
 uint8_t  skin = 0, aeroVar = 0;                       // look: 0 deck, 1 aero
 bool     eyesIdle = false, tiltSpin = true, idleEyesOn = false;
 uint8_t  idleReturn = 8;
@@ -608,7 +611,7 @@ void shadeRows(int y0, int y1, int k0, int k1) {
 
 // The accent colour follows the theme, and takes the album's colour while music plays.
 void accentTarget(uint8_t &r, uint8_t &g, uint8_t &b) {
-  uint16_t t = skin == SKIN_QUEST ? c565(250, 210, 90) : skin ? AERO_ACC_C[aeroVar % 3] : THEMES[theme % THEME_COUNT];
+  uint16_t t = skin == SKIN_RONIN ? c565(230, 70, 56) : skin == SKIN_QUEST ? c565(250, 210, 90) : skin ? AERO_ACC_C[aeroVar % 3] : THEMES[theme % THEME_COUNT];
   r = r8(t); g = g8(t); b = b8(t);
   if (npPlaying && npTitle.length() && millis() > themePreviewUntil) {
     int nr = r8(npColor), ng = g8(npColor), nb = b8(npColor), mx = max(nr, max(ng, nb));
@@ -701,7 +704,7 @@ void drawBatteryCells(int x, int y) {
 void aeroTopBar(bool showTime);
 void questTopBar(bool showTime);
 void topBar(const char *label, bool showTime) {
-  if (skin == SKIN_QUEST) { questTopBar(showTime); return; }
+  if (PIXEL_SKIN) { questTopBar(showTime); return; }
   if (skin) { aeroTopBar(showTime); return; }
   dimRect(0, 0, SCR_W, 23, 1);
   textAt(label, 34, 9, 1, ACC);
@@ -727,7 +730,7 @@ void aeroToast();
 void questToast();
 void drawToast() {
   if (millis() > toastUntil) return;
-  if (skin == SKIN_QUEST) { questToast(); return; }
+  if (PIXEL_SKIN) { questToast(); return; }
   if (skin) { aeroToast(); return; }
   String m = toastMsg; m.toUpperCase();
   int w = m.length() * 12 + 20, x = (SCR_W - w) / 2;
@@ -741,7 +744,7 @@ void questOverlay(const char *big, const char *small, float frac);
 void drawTransferOverlay() {
   if (!xferActive || xferSize == 0 || xferKind == 3) return;      // album art arrives quietly
   int pct = (int)(100ULL * xferGot / xferSize);
-  if (skin == SKIN_QUEST) { questOverlay("Receiving", nullptr, pct / 100.0f); return; }
+  if (PIXEL_SKIN) { questOverlay("Receiving", nullptr, pct / 100.0f); return; }
   if (skin) { aeroOverlayPanel("Receiving", nullptr, pct / 100.0f); return; }
   gfx->fillRect(30, 112, 180, 56, COL_BLACK);
   hudPanel(30, 112, 180, 56, ACC, 0);
@@ -753,7 +756,7 @@ void drawTransferOverlay() {
 void aeroBackdrop(const uint16_t *base = nullptr);
 void questEmpty(const char *big, const char *l1, const char *l2);
 void emptyState(const char *label, const char *big, const char *l1, const char *l2) {
-  if (skin == SKIN_QUEST) { questEmpty(big, l1, l2); return; }
+  if (PIXEL_SKIN) { questEmpty(big, l1, l2); return; }
   if (skin) {
     aeroBackdrop();
     topBar(label, true);
@@ -1591,7 +1594,7 @@ void clockHand(float ang, int len, uint16_t c, int thick) {
 void drawClockAero();
 void drawClockQuest();
 void drawClock() {
-  if (skin == SKIN_QUEST) { drawClockQuest(); return; }
+  if (PIXEL_SKIN) { drawClockQuest(); return; }
   if (skin) { drawClockAero(); return; }
   drawBackground();
   topBar("//CHRONO", false);
@@ -1754,7 +1757,7 @@ void mediaCmd(uint8_t kind) {
 void drawMusicAero();
 void drawMusicQuest();
 void drawMusic() {
-  if (skin == SKIN_QUEST) { drawMusicQuest(); return; }
+  if (PIXEL_SKIN) { drawMusicQuest(); return; }
   if (skin) { drawMusicAero(); return; }
   if (artLoaded && artBuf && FB) {
     memcpy(FB, artBuf, FB_BYTES);
@@ -1820,7 +1823,7 @@ void drawMusic() {
 
 void drawPetQuest();
 void drawPet() {
-  if (skin == SKIN_QUEST) { drawPetQuest(); return; }
+  if (PIXEL_SKIN) { drawPetQuest(); return; }
   if (skin) {
     aeroBackdrop();
     topBar("//DAEMON", true);
@@ -1866,7 +1869,7 @@ void drawPet() {
 void drawCardAero();
 void drawCardQuest();
 void drawCard() {
-  if (skin == SKIN_QUEST) { drawCardQuest(); return; }
+  if (PIXEL_SKIN) { drawCardQuest(); return; }
   if (skin) { drawCardAero(); return; }
   const uint16_t a = cardAccent;
   gfx->fillScreen(COL_VOID);
@@ -1932,7 +1935,7 @@ void drawDie(int x, int y, int s, uint8_t v) {
 
 void drawToyQuest();
 void drawToy() {
-  if (skin == SKIN_QUEST) { drawToyQuest(); return; }
+  if (PIXEL_SKIN) { drawToyQuest(); return; }
   static const char *TN[3] = {"< ORACLE >", "< DICE >", "< COIN >"};
   uint32_t el = millis() - toyRollAt;
   bool rolling = toyRollAt && el < 1100;
@@ -2000,7 +2003,7 @@ void drawToy() {
 void drawAlarmQuest();
 void drawAlarm() {
   if (!alarmUntil) return;
-  if (skin == SKIN_QUEST) { drawAlarmQuest(); return; }
+  if (PIXEL_SKIN) { drawAlarmQuest(); return; }
   if (skin) {
     glassPanel(20, 92, 200, 96, 26, (millis() / 300) % 2 ? 0.9f : 0.6f, 0.45f);
     aaTextC(F_L, "Time's up!", 120, 136, AERO_INK);
@@ -2017,7 +2020,7 @@ void drawAlarm() {
 // a line across the bottom of the other screens while a song is playing
 void drawTicker() {
   if (!npPlaying || !npTitle.length()) return;
-  if (skin == SKIN_QUEST) return;
+  if (PIXEL_SKIN) return;
   if (skin) {
     if (mode != M_CLOCK) return;
     String s = asciiOnly(npTitle);
@@ -2837,7 +2840,7 @@ void drawJukeAero() {
 }
 
 void drawJukeQuest();
-void drawJuke() { if (skin == SKIN_QUEST) drawJukeQuest(); else if (skin == SKIN_AERO) drawJukeAero(); else drawJukeDeck(); }
+void drawJuke() { if (PIXEL_SKIN) drawJukeQuest(); else if (skin == SKIN_AERO) drawJukeAero(); else drawJukeDeck(); }
 
 // ═════════════ v5: charging screen ═════════════
 uint8_t chargeReturn = M_DECK;
@@ -2906,7 +2909,7 @@ void drawChargeAero() {
 }
 
 void drawChargeQuest();
-void drawCharge() { if (skin == SKIN_QUEST) drawChargeQuest(); else if (skin == SKIN_AERO) drawChargeAero(); else drawChargeDeck(); }
+void drawCharge() { if (PIXEL_SKIN) drawChargeQuest(); else if (skin == SKIN_AERO) drawChargeAero(); else drawChargeDeck(); }
 
 // ═════════════ v5: torch ═════════════
 const uint16_t TORCH_COL[4] = { COL_WHITE, c565(255, 206, 150), c565(255, 0, 0), c565(120, 230, 255) };
@@ -2962,6 +2965,7 @@ const int8_t QDOOR[QW_NLOC][2] = {{64, 92}, {65, 93}, {78, 94}, {64, 80}, {72, 9
 uint8_t  *qWorld = nullptr, *qFarI = nullptr, *qHillI = nullptr, *qFgI = nullptr;
 uint16_t *qFar = nullptr, *qHill = nullptr, *qFg = nullptr;
 uint8_t  *qHillA = nullptr, *qFgA = nullptr, *qTmp = nullptr;
+#define Q_TMP_BYTES (240 * RF_H * 2 * 4)            // big enough for either look's largest layer
 uint16_t  qLut[256], qLutS[256];
 uint8_t   qRgb[256][3];
 uint16_t  qSky[140];
@@ -2970,6 +2974,11 @@ float     qNight = 0, qDayK = 1, qHourNow = 12, qHourForce = -1;
 int       qBakeKey = -1;
 bool      qReady = false;
 
+uint16_t qIconLut[256]; bool qIconOk = false;
+const uint16_t *qIcons() {
+  if (!qIconOk) { for (int i = 0; i < QPAL_N; i++) qIconLut[i] = c565(QPAL[i][0], QPAL[i][1], QPAL[i][2]); qIconOk = true; }
+  return qIconLut;
+}
 int qLocOfMode(uint8_t m) { for (int i = 0; i < QW_NLOC; i++) if (QLOC_MODE[i] == m) return i; return -1; }
 
 void qRle(const uint8_t *src, uint8_t *dst, int n) {
@@ -2992,7 +3001,7 @@ bool questInit() {
   if (!qHillA) qHillA = (uint8_t *)ps_malloc(QH_W * 2 * QH_H * 2);
   if (!qFg)    qFg    = (uint16_t *)ps_malloc(QG_W * 2 * QG_H * 2 * 2);
   if (!qFgA)   qFgA   = (uint8_t *)ps_malloc(QG_W * 2 * QG_H * 2);
-  if (!qTmp)   qTmp   = (uint8_t *)ps_malloc(QF_W * 2 * QF_H * 2 * 4);
+  if (!qTmp)   qTmp   = (uint8_t *)ps_malloc(Q_TMP_BYTES);
   if (!qWorld || !qFarI || !qHillI || !qFgI || !qFar || !qHill || !qHillA || !qFg || !qFgA || !qTmp) return false;
   qRle(QW_RLE, qWorld, QW_W * QW_H);
   qRle(QF_RLE, qFarI, QF_W * QF_H);
@@ -3094,7 +3103,7 @@ static void qBlur(uint8_t *px, int w, int h, int r, uint8_t *line) {
 }
 
 // Renders an indexed layer at full size into RGBA, blurs it, and keeps it as RGB565 (+ alpha).
-static void qBakeLayer(const uint8_t *idx, int lw, int lh, int ly0, bool skyFill, int radius, uint16_t *out, uint8_t *alpha) {
+static void qBakeLayer(const uint8_t *idx, int lw, int lh, int ly0, bool skyFill, int radius, uint16_t *out, uint8_t *alpha, const uint8_t (*rgb)[3] = qRgb) {
   int w = lw * 2, h = lh * 2;
   static uint8_t line[1024 * 4];
   for (int y = 0; y < h; y++) {
@@ -3103,7 +3112,7 @@ static void qBakeLayer(const uint8_t *idx, int lw, int lh, int ly0, bool skyFill
     for (int x = 0; x < w; x++) {
       uint8_t i = idx[(y / 2) * lw + x / 2];
       uint8_t *p = qTmp + (y * w + x) * 4;
-      if (i) { p[0] = qRgb[i][0]; p[1] = qRgb[i][1]; p[2] = qRgb[i][2]; p[3] = 255; }
+      if (i) { p[0] = rgb[i][0]; p[1] = rgb[i][1]; p[2] = rgb[i][2]; p[3] = 255; }
       else if (skyFill) { p[0] = sr; p[1] = sg; p[2] = sb; p[3] = 255; }
       else { p[0] = p[1] = p[2] = p[3] = 0; }
     }
@@ -3209,25 +3218,26 @@ String qClip(const QFont &f, String s, int maxW) {
 #define Q_INK   qLutS[QC_INK]
 #define Q_WHITE c565(250, 248, 240)
 #define Q_GOLD  c565(250, 210, 90)
-#define Q_DIM   c565(170, 186, 230)
+#define Q_DIM   (skin == SKIN_RONIN ? c565(206, 176, 160) : c565(170, 186, 230))
 #define Q_SHADOW c565(16, 14, 40)
 
 // The classic JRPG window: a blue gradient, a white frame, gold corners.
 void qWindow(int x, int y, int w, int h, uint8_t alpha = 236) {
   x &= ~1; y &= ~1; w &= ~1; h &= ~1;
-  const uint16_t top = c565(56, 80, 196), bot = c565(18, 26, 96);
+  bool rn = skin == SKIN_RONIN;
+  const uint16_t top = rn ? c565(52, 18, 24) : c565(56, 80, 196), bot = rn ? c565(10, 6, 14) : c565(18, 26, 96);
   for (int j = 4; j < h - 4; j++) {
     uint16_t c = mix565(top, bot, (uint8_t)(j * 255 / h));
     int inset = (j < 6 || j >= h - 6) ? 6 : 4;
     qRectA(x + inset, y + j, w - 2 * inset, 1, c, alpha);
   }
-  const uint16_t ink = c565(20, 16, 40), lite = c565(250, 250, 255), mid = c565(176, 186, 214);
+  const uint16_t ink = c565(20, 16, 40), lite = rn ? c565(228, 184, 96) : c565(250, 250, 255), mid = rn ? c565(150, 100, 40) : c565(176, 186, 214);
   qRect(x + 4, y, w - 8, 2, ink); qRect(x + 4, y + h - 2, w - 8, 2, ink);
   qRect(x, y + 4, 2, h - 8, ink); qRect(x + w - 2, y + 4, 2, h - 8, ink);
   qRect(x + 2, y + 2, 2, 2, ink); qRect(x + w - 4, y + 2, 2, 2, ink); qRect(x + 2, y + h - 4, 2, 2, ink); qRect(x + w - 4, y + h - 4, 2, 2, ink);
   qRect(x + 4, y + 2, w - 8, 2, lite); qRect(x + 2, y + 4, 2, h - 8, lite);
   qRect(x + 4, y + h - 4, w - 8, 2, mid); qRect(x + w - 4, y + 4, 2, h - 8, mid);
-  const uint16_t g1 = c565(250, 210, 90), g0 = c565(160, 100, 30);
+  const uint16_t g1 = rn ? c565(240, 70, 56) : c565(250, 210, 90), g0 = rn ? c565(120, 20, 26) : c565(160, 100, 30);
   int cx[4] = {x + 2, x + w - 8, x + 2, x + w - 8}, cy[4] = {y + 2, y + 2, y + h - 8, y + h - 8};
   for (int k = 0; k < 4; k++) {
     qRect(cx[k] + 2, cy[k], 2, 6, g0); qRect(cx[k], cy[k] + 2, 6, 2, g0); qRect(cx[k] + 2, cy[k] + 2, 2, 2, g1);
@@ -3237,8 +3247,9 @@ void qWindow(int x, int y, int w, int h, uint8_t alpha = 236) {
 void qPlate(const char *s, int cx, int y) {
   int w = qTextW(QF_BODY, s) + 16; int x = (cx - w / 2) & ~1;
   qRect(x + 2, y, w - 4, 18, c565(60, 34, 14)); qRect(x, y + 2, w, 14, c565(60, 34, 14));
-  qRect(x + 2, y + 2, w - 4, 14, c565(214, 152, 44)); qRect(x + 2, y + 2, w - 4, 2, c565(255, 230, 140)); qRect(x + 2, y + 14, w - 4, 2, c565(150, 92, 26));
-  qText(QF_BODY, s, x + 8, y + 3, c565(60, 26, 10));
+  bool rn = skin == SKIN_RONIN;
+  qRect(x + 2, y + 2, w - 4, 14, rn ? c565(166, 30, 32) : c565(214, 152, 44)); qRect(x + 2, y + 2, w - 4, 2, rn ? c565(222, 76, 60) : c565(255, 230, 140)); qRect(x + 2, y + 14, w - 4, 2, rn ? c565(96, 14, 22) : c565(150, 92, 26));
+  qText(QF_BODY, s, x + 8, y + 3, rn ? c565(255, 226, 160) : c565(60, 26, 10));
 }
 void qBar(int x, int y, int w, float f, uint16_t c0, uint16_t c1) {
   qRect(x, y, w, 10, c565(20, 16, 40)); qRect(x + 2, y + 2, w - 4, 6, c565(44, 40, 78));
@@ -3375,6 +3386,7 @@ bool qOnScreen(float cam, int wx, int wy, int &sx, int &sy, int margin = 40) {
   return sx > -margin && sx < SCR_W + margin;
 }
 
+void rSamurai(int sx, int sy, int frame, bool flip);
 void qHero(int sx, int sy, int frame, bool flip, bool blink) {
   const uint8_t *f = QHERO + frame * QHERO_W * QHERO_H;
   qRectA(sx + 6, sy + QHERO_H * 2 - 4, 20, 4, c565(10, 10, 30), 90);    // shadow
@@ -3608,17 +3620,17 @@ void qHud() {
   } else snprintf(b, sizeof(b), "--:--");
   int w = qTextW(QF_BODY, b) + 34;
   qWindow(22, 8, w, 26, 210);
-  bool night = qNight > 0.5f;
-  qSprite(night ? QMOON : QSUN, 8, 8, 30, 13, false, qLutS);
+  bool night = qNight > 0.5f || skin == SKIN_RONIN;
+  qSprite(night ? QMOON : QSUN, 8, 8, 30, 13, false, qIcons());
   qText(QF_BODY, b, 48, 13, timerEndAt ? Q_GOLD : Q_WHITE, 2, Q_SHADOW);
   snprintf(b, sizeof(b), "%d%%", batPct);
   int bw = qTextW(QF_BODY, b) + 36 + (bleConnected ? 14 : 0);
   int bx = (218 - bw) & ~1;
   qWindow(bx, 8, bw, 26, 210);
   uint16_t col = charging ? c565(150, 255, 120) : batPct > 20 ? Q_WHITE : c565(255, 110, 100);
-  qSprite(QHEART, 8, 8, bx + 8, 13, false, qLutS);
+  qSprite(QHEART, 8, 8, bx + 8, 13, false, qIcons());
   qText(QF_BODY, b, bx + 26, 13, col, 2, Q_SHADOW);
-  if (bleConnected) qSprite(QGEM, 8, 8, bx + bw - 22, 13, false, qLutS);
+  if (bleConnected) qSprite(QGEM, 8, 8, bx + bw - 22, 13, false, qIcons());
 }
 
 void qMosaic(int block, int darken) {
@@ -3707,9 +3719,13 @@ void drawQuestHome() {
 
 // ───── the screens behind each door ─────
 float qCamOf(uint8_t m) { int l = qLocOfMode(m); return l < 0 ? 0 : l * (float)QW_SPACING; }
+void rBackdrop(uint8_t m);
 void qBackdrop(uint8_t m, int dim = 0) {
-  if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); return; }
-  qScene(qCamOf(m), false, m != M_PET);
+  if (skin == SKIN_RONIN) rBackdrop(m);
+  else {
+    if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); return; }
+    qScene(qCamOf(m), false, m != M_PET);
+  }
   if (dim) { uint32_t k = (256 - dim) >> 3; for (int i = 0; i < SCR_W * SCR_H; i++) FB[i] = qMul32(FB[i], k); }
 }
 
@@ -3775,13 +3791,15 @@ void drawClockQuest() {
   qTextC(QF_BODY, b, 120, 152, Q_WHITE, 2, Q_SHADOW);
   // seconds as a row of pips, then the part of the day
   for (int i = 0; i < 30; i++) qRect(36 + i * 6, 176, 4, 4, i * 2 <= t.tm_sec ? Q_GOLD : c565(40, 50, 120));
-  snprintf(b, sizeof(b), "%s  -  day %d", qPeriod(), t.tm_yday + 1);
+  static const char *ZOD[12] = {"Rat", "Ox", "Tiger", "Rabbit", "Dragon", "Snake", "Horse", "Goat", "Monkey", "Rooster", "Dog", "Boar"};
+  if (skin == SKIN_RONIN) snprintf(b, sizeof(b), "Hour of the %s", ZOD[((t.tm_hour + 1) / 2) % 12]);
+  else snprintf(b, sizeof(b), "%s  -  day %d", qPeriod(), t.tm_yday + 1);
   qTextC(QF_BODY, b, 120, 186, Q_DIM);
   if (npPlaying && npTitle.length()) {
     String s = qClip(QF_BODY, asciiOnly(npTitle), 150);
     int sw = qTextW(QF_BODY, s.c_str()) + 40;
     qWindow(120 - sw / 2, 222, sw, 28, 210);
-    qSprite(QNOTE, QNOTE_W, QNOTE_H, 120 - sw / 2 + 12, 228, false, qLutS);
+    qSprite(QNOTE, QNOTE_W, QNOTE_H, 120 - sw / 2 + 12, 228, false, qIcons());
     qText(QF_BODY, s.c_str(), 120 - sw / 2 + 28, 228, Q_WHITE, 2, Q_SHADOW);
   }
 }
@@ -3856,7 +3874,7 @@ void drawJukeQuest() {
     int i = qjTop + r, id = ids[i], y = QJ_ROW_Y + r * QJ_ROW_H;
     bool cur = jbPlaying && id == jbSong;
     String nm = qClip(QF_BODY, String(songName(id)), 150);
-    if (i == sel) qSprite(QHAND, 9, 7, 24 + ((millis() / 250) % 2) * 2, y + 4, false, qLutS);
+    if (i == sel) qSprite(QHAND, 9, 7, 24 + ((millis() / 250) % 2) * 2, y + 4, false, qIcons());
     qText(QF_BODY, nm.c_str(), 46, y + 2, cur ? Q_GOLD : Q_WHITE, 2, Q_SHADOW);
     if (cur) for (int k = 0; k < 3; k++) { int hh = 4 + (int)(fabsf(sinf(millis() / 120.0f + k)) * 8) & ~1; qRect(196 + k * 6, y + 16 - hh, 4, hh, Q_GOLD); }
   }
@@ -3902,11 +3920,11 @@ void drawPetQuest() {
   if (dizzy) slide += (int)(sinf(t * 25) * 6) & ~1;
   qRectA(120 + slide - 26, 236, 52, 6, c565(10, 10, 30), 100);
   drawSprite(spr, 96 + slide, 190 - hop, 4, mix565(petColor, COL_BLACK, (uint8_t)(qNight * 90)), (frameNo % 60) < 3 || dizzy);
-  if (dizzy) for (int i = 0; i < 3; i++) { float a = t * 8 + i * 2.09f; qSprite(QCOIN0, 5, 5, 116 + slide + (int)(cosf(a) * 30), 182 - hop + (int)(sinf(a) * 6), false, qLutS); }
+  if (dizzy) for (int i = 0; i < 3; i++) { float a = t * 8 + i * 2.09f; qSprite(QCOIN0, 5, 5, 116 + slide + (int)(cosf(a) * 30), 182 - hop + (int)(sinf(a) * 6), false, qIcons()); }
   if (millis() < petHeartsUntil)
     for (int i = 0; i < 4; i++) {
       int hx = 50 + i * 44, hy = 176 - (int)((millis() / 20 + i * 17) % 70);
-      qSprite(QHEART, 8, 8, hx, hy, false, qLutS);
+      qSprite(QHEART, 8, 8, hx, hy, false, qIcons());
     }
   String nm = asciiOnly(petName);
   int w = qTextW(QF_TITLE, nm.c_str()) + 40;
@@ -3915,7 +3933,7 @@ void drawPetQuest() {
   qWindow(30, 244, 180, 30, 220);
   int hearts = (petMood + 19) / 20;
   for (int i = 0; i < 5; i++) {
-    if (i < hearts) qSprite(QHEART, 8, 8, 44 + i * 20, 251, false, qLutS);
+    if (i < hearts) qSprite(QHEART, 8, 8, 44 + i * 20, 251, false, qIcons());
     else { qRect(46 + i * 20, 253, 12, 10, c565(40, 40, 80)); }
   }
   qText(QF_BODY, dizzy ? "Dizzy!" : petMood > 70 ? "Happy" : petMood > 35 ? "Chilling" : "Hungry", 146, 250, Q_WHITE, 2, Q_SHADOW);
@@ -3924,24 +3942,34 @@ void drawPetQuest() {
 void drawToyQuest() {
   qBackdrop(M_TOY, 60);
   qHud();
-  static const char *TN[3] = {"Oracle", "Dice", "Coin"};
+  static const char *TN0[3] = {"Oracle", "Dice", "Coin"}, *TN1[3] = {"Omikuji", "Dice", "Coin"};
+  const char *const *TN = skin == SKIN_RONIN ? TN1 : TN0;
   uint32_t el = millis() - toyRollAt;
   bool rolling = toyRollAt && el < 1100;
   int jx = rolling ? ((int)random(-3, 4)) * 2 : 0, jy = rolling ? ((int)random(-3, 4)) * 2 : 0;
-  qWindow(60, 40, 120, 34);
+  qWindow(52, 40, 136, 34);
   qTextC(QF_TITLE, TN[toyKind % 3], 120, 42, Q_WHITE, 2, Q_SHADOW);
   int bob = ((millis() / 300) % 2) * 2;
   qArrow(72 - bob, 57, -1, Q_GOLD); qArrow(168 + bob, 57, 1, Q_GOLD);
   if (toyKind == 0) {
     int cx = 120 + jx, cy = 136 + jy;
+    if (skin == SKIN_RONIN) {                                  // a wooden omikuji box with a fortune stick
+      qGlow(cx, cy, 70, c565(255, 120, 60), 80 + (rolling ? 80 : 0));
+      int sy = rolling ? cy - 40 : toyHasResult ? cy - 66 : cy - 46;
+      qRect(cx - 3, sy, 6, 40, c565(40, 24, 20)); qRect(cx - 2, sy + 1, 4, 38, c565(224, 200, 150)); qRect(cx - 2, sy + 1, 4, 6, c565(200, 40, 36));
+      qRect(cx - 26, cy - 34, 52, 74, c565(20, 12, 16)); qRect(cx - 24, cy - 32, 48, 70, c565(150, 98, 60)); qRect(cx - 24, cy - 32, 8, 70, c565(190, 136, 86)); qRect(cx + 16, cy - 32, 8, 70, c565(110, 66, 42));
+      qRect(cx - 16, cy - 18, 32, 40, c565(200, 40, 36)); qRect(cx - 12, cy - 14, 24, 32, c565(150, 22, 28));
+      qTextC(QF_TITLE, "?", cx, cy - 14, c565(255, 220, 150), 3);
+    } else {
     qGlow(cx, cy, 70, c565(120, 200, 255), 120 + (rolling ? 80 : 0));
     gfx->fillCircle(cx, cy, 40, c565(30, 20, 46));
     gfx->fillCircle(cx, cy, 37, c565(40, 120, 220));
     gfx->fillCircle(cx - 4, cy - 4, 30, c565(90, 190, 250));
     gfx->fillCircle(cx - 12, cy - 14, 8, c565(220, 250, 255));
     qRect(cx - 30, cy + 34, 60, 8, c565(110, 60, 140)); qRect(cx - 24, cy + 42, 48, 6, c565(70, 36, 100));
+    }
     qWindow(20, 200, 200, 58);
-    const char *ans = rolling ? "The crystal is thinking..." : toyHasResult ? EIGHT[toyResult % EIGHT_N] : (imuOK ? "Shake me for an answer" : "Tap for an answer");
+    const char *ans = rolling ? (skin == SKIN_RONIN ? "Shaking the box..." : "The crystal is thinking...") : toyHasResult ? EIGHT[toyResult % EIGHT_N] : (imuOK ? "Shake me for an answer" : "Tap for an answer");
     String a = ans; a.replace('\n', ' ');
     if (toyHasResult && !rolling) { a.setCharAt(0, toupper(a[0])); qTextC(QF_TITLE, a.c_str(), 120, 210, Q_GOLD, 2, Q_SHADOW); }
     else qTextC(QF_BODY, a.c_str(), 120, 220, Q_WHITE, 2, Q_SHADOW);
@@ -3982,9 +4010,9 @@ void drawCardQuest() {
   qHud();
   qWindow(14, 44, 212, 222);
   qPlate("STATUS", 120, 36);
-  qRect(26, 58, 52, 64, c565(20, 16, 40)); qRect(28, 60, 48, 60, c565(70, 110, 190));
-  qRect(28, 104, 48, 16, c565(60, 140, 70));
-  qHero(36, 64, (millis() / 600) % 2, false, (frameNo % 110) < 4);
+  qRect(26, 58, 52, 64, c565(20, 16, 40));
+  if (skin == SKIN_RONIN) { qRect(28, 60, 48, 60, c565(90, 20, 26)); qRect(28, 104, 48, 16, c565(30, 22, 34)); gfx->fillCircle(64, 76, 10, c565(200, 50, 44)); rSamurai(36, 64, (millis() / 600) % 2, false); }
+  else { qRect(28, 60, 48, 60, c565(70, 110, 190)); qRect(28, 104, 48, 16, c565(60, 140, 70)); qHero(36, 64, (millis() / 600) % 2, false, (frameNo % 110) < 4); }
   String name = asciiOnly(cardName), sub = asciiOnly(cardSub);
   name = qClip(QF_TITLE, name, 130);
   qText(QF_TITLE, name.c_str(), 88, 56, Q_WHITE, 2, Q_SHADOW);
@@ -4006,12 +4034,14 @@ void drawCardQuest() {
   // the NFC spot: rings pulse out of a crest
   int phase = (frameNo / 4) % 4;
   for (int i = 0; i < 3; i++) gfx->drawCircle(120, 220, 10 + i * 8, i < phase ? Q_GOLD : c565(60, 70, 140));
-  qSprite(QGEM, 8, 8, 112, 212, false, qLutS);
+  qSprite(QGEM, 8, 8, 112, 212, false, qIcons());
   qTextC(QF_BODY, "Tap a phone here", 120, 244, Q_WHITE, 2, Q_SHADOW);
 }
 
 // Charging: the hero naps by the campfire
+void rCharge();
 void drawChargeQuest() {
+  if (skin == SKIN_RONIN) { rCharge(); return; }
   if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); return; }
   float cam = qCamOf(M_JUKE);
   qScene(cam, false, true);
@@ -4053,6 +4083,354 @@ void questBoot() {
   qRectA(0, 0, SCR_W, SCR_H, c565(10, 10, 40), 70);
   qTextC(QF_TITLE, "Larp Charm", 120, 96, Q_GOLD, 3, Q_SHADOW);
   qTextC(QF_BODY, "A pocket-sized quest", 120, 150, Q_WHITE, 2, Q_SHADOW);
+  qTextC(QF_BODY, "Press start", 120, 220, Q_WHITE, 2, Q_SHADOW);
+}
+
+// ═════════════ v6: the Ronin look, a samurai climbing his burning mountain village ═════════════
+// Same half-resolution pixel engine as Quest, but the world scrolls up and down: swipe up to climb the
+// stairs to the next landing, swipe down to go back. Every landing holds one landmark; tap the middle to go in.
+uint8_t  *rWorld = nullptr, *rFarI = nullptr, *rMidI = nullptr, *rFgI = nullptr;
+uint16_t *rFar = nullptr, *rMid = nullptr, *rFg = nullptr;
+uint8_t  *rFarA = nullptr, *rMidA = nullptr, *rFgA = nullptr;
+uint16_t  rLut[256], rSky[SCR_H];
+uint8_t   rRgb[256][3];
+bool      rReady = false;
+int       rLoc = 0, rShown = 0;
+float     rFeet = 0, rFrom = 0;
+uint32_t  rMoveAt = 0, rMoveMs = 0, rArriveAt = 0, rEnterAt = 0, rSlashAt = 0;
+int8_t    rDir = 1;
+struct RMote { float x, y, vx, vy, ph; };
+RMote rEmber[28], rAsh[14];
+
+static inline int rGY(int i) { return RW_GY0 - i * RW_S; }
+static inline float rCamOfLoc(int i) { return rGY(i) - 112.0f; }
+
+bool roninInit() {
+  if (rReady) return true;
+  if (!rWorld) rWorld = (uint8_t *)ps_malloc(RW_W * RW_H);
+  if (!rFarI)  rFarI  = (uint8_t *)ps_malloc(RW_W * RF_H);
+  if (!rMidI)  rMidI  = (uint8_t *)ps_malloc(RW_W * RM_H);
+  if (!rFgI)   rFgI   = (uint8_t *)ps_malloc(RW_W * RG_H);
+  if (!rFar)   rFar   = (uint16_t *)ps_malloc(240 * RF_H * 2 * 2);
+  if (!rFarA)  rFarA  = (uint8_t *)ps_malloc(240 * RF_H * 2);
+  if (!rMid)   rMid   = (uint16_t *)ps_malloc(240 * RM_H * 2 * 2);
+  if (!rMidA)  rMidA  = (uint8_t *)ps_malloc(240 * RM_H * 2);
+  if (!rFg)    rFg    = (uint16_t *)ps_malloc(240 * RG_H * 2 * 2);
+  if (!rFgA)   rFgA   = (uint8_t *)ps_malloc(240 * RG_H * 2);
+  if (!qTmp)   qTmp   = (uint8_t *)ps_malloc(Q_TMP_BYTES);
+  if (!rWorld || !rFarI || !rMidI || !rFgI || !rFar || !rFarA || !rMid || !rMidA || !rFg || !rFgA || !qTmp) return false;
+  qRle(RW_RLE, rWorld, RW_W * RW_H);
+  qRle(RF_RLE, rFarI, RW_W * RF_H);
+  qRle(RM_RLE, rMidI, RW_W * RM_H);
+  qRle(RG_RLE, rFgI, RW_W * RG_H);
+  for (int i = 0; i < RPAL_N; i++) { rRgb[i][0] = RPAL[i][0]; rRgb[i][1] = RPAL[i][1]; rRgb[i][2] = RPAL[i][2]; rLut[i] = c565(rRgb[i][0], rRgb[i][1], rRgb[i][2]); }
+  qBakeLayer(rFarI, RW_W, RF_H, 0, false, 2, rFar, rFarA, rRgb);
+  qBakeLayer(rMidI, RW_W, RM_H, 0, false, 1, rMid, rMidA, rRgb);
+  qBakeLayer(rFgI, RW_W, RG_H, 0, false, 3, rFg, rFgA, rRgb);
+  for (int y = 0; y < SCR_H; y++) {                    // night sky, glowing red low down from the fires
+    float t = y / (float)(SCR_H - 1);
+    float r = t < 0.55f ? qLerp(4, 22, t / 0.55f) : qLerp(22, 96, (t - 0.55f) / 0.45f);
+    float g = t < 0.55f ? qLerp(3, 8, t / 0.55f) : qLerp(8, 22, (t - 0.55f) / 0.45f);
+    float b = t < 0.55f ? qLerp(12, 26, t / 0.55f) : qLerp(26, 24, (t - 0.55f) / 0.45f);
+    rSky[y] = c565((uint8_t)r, (uint8_t)g, (uint8_t)b);
+  }
+  rReady = true;
+  return true;
+}
+
+// the light flickers a little with the fires
+void rFlicker() {
+  float t = millis() / 1000.0f;
+  float f = 0.93f + 0.04f * sinf(t * 7.3f) + 0.03f * sinf(t * 13.1f + 1);
+  for (int i = 0; i < RPAL_N; i++) {
+    if (RPAL[i][3] == 2) continue;
+    rLut[i] = c565((uint8_t)min(255, (int)(rRgb[i][0] * f)), (uint8_t)min(255, (int)(rRgb[i][1] * f)), (uint8_t)min(255, (int)(rRgb[i][2] * f)));
+  }
+}
+
+void rBlitRows(const uint16_t *col, const uint8_t *al, int th, int off, bool wrap) {
+  for (int y = 0; y < SCR_H; y++) {
+    int fy = y + off;
+    if (wrap) { fy %= th; if (fy < 0) fy += th; }
+    else if (fy < 0 || fy >= th) continue;
+    uint16_t *dst = FB + y * SCR_W; const uint16_t *s = col + fy * SCR_W; const uint8_t *a = al + fy * SCR_W;
+    for (int x = 0; x < SCR_W; x++) { uint8_t v = a[x]; if (!v) continue; dst[x] = v > 247 ? s[x] : blend565(dst[x], s[x], v); }
+  }
+}
+void rBlitWorld(int camR) {
+  for (int y = 0; y < SCR_H; y++) {
+    int wy = (camR + y) >> 1;
+    if (wy < 0 || wy >= RW_H) continue;
+    const uint8_t *src = rWorld + wy * RW_W; uint16_t *dst = FB + y * SCR_W;
+    for (int lx = 0; lx < RW_W; lx++) { uint8_t v = src[lx]; if (v) { uint16_t c = rLut[v]; dst[lx * 2] = c; dst[lx * 2 + 1] = c; } }
+  }
+}
+
+void rMoon() {
+  const int mx = 182, my = 58;
+  qGlow(mx, my, 60, c565(200, 40, 30), 90);
+  qGlow(mx, my, 30, c565(255, 90, 60), 120);
+  for (int y = -17; y <= 17; y++) for (int x = -17; x <= 17; x++) {
+    int d2 = x * x + y * y; if (d2 > 17 * 17) continue;
+    float l = clamp01(0.75f - (x + y) / 40.0f);
+    uint16_t c = mix565(c565(130, 20, 22), c565(255, 116, 86), (uint8_t)(l * 255));
+    if ((x + 30) * 7 % 11 == 0 && (y + 30) % 5 == 0) c = qMul32(c, 26);
+    FB[(my + y) * SCR_W + mx + x] = c;
+  }
+  float t = millis() / 1000.0f;                       // smoke drifting across it
+  for (int k = 0; k < 2; k++) {
+    int cy = my - 8 + k * 14, cx = (int)fmodf(t * (8 + k * 5) + k * 90, 300) - 30;
+    for (int y = -3; y <= 3; y++) qRectA(cx - 40 + abs(y) * 4, cy + y, 80 - abs(y) * 8, 1, c565(14, 8, 16), 120);
+  }
+}
+
+void rFireArrows() {
+  uint32_t ms = millis();
+  for (int k = 0; k < 2; k++) {
+    uint32_t cyc = (ms + k * 4700) % 9500;
+    if (cyc > 1600) continue;
+    float p = cyc / 1600.0f;
+    int x0 = k ? 250 : -10, dir = k ? -1 : 1;
+    for (int s = 0; s < 10; s++) {
+      float q = p - s * 0.012f; if (q < 0) break;
+      int x = x0 + dir * (int)(q * 260), y = 110 - (int)(sinf(q * 3.14159f) * 70) + k * 30;
+      uint16_t c = s < 2 ? c565(255, 240, 170) : s < 5 ? c565(255, 170, 60) : c565(220, 70, 20);
+      qPxA(x & ~1, y & ~1, c, (uint8_t)(255 - s * 22));
+      if (s == 0) qGlow(x, y, 10, c565(255, 140, 50), 160);
+    }
+  }
+}
+
+void rFlames(int sx, int sy, int size, float t, int seed) {
+  qGlow(sx, sy - size, size * 5, c565(255, 110, 40), 110 + (int)(sinf(t * 11 + seed) * 25));
+  for (int i = 0; i < 6; i++) {
+    float p = fmodf(t * 1.8f + i * 0.31f + seed * 0.17f, 1.0f);
+    int x = sx - size + (i * 7 + seed) % (2 * size + 1) + (int)(sinf(t * 9 + i + seed) * 2);
+    int y = sy - (int)(p * size * 5);
+    uint16_t c = p < 0.25f ? rLut[RC_F3] : p < 0.5f ? rLut[RC_F2] : p < 0.75f ? rLut[RC_F1] : rLut[RC_F0];
+    int s = p < 0.5f ? 4 : 2;
+    qRect(x & ~1, y & ~1, s, s, c);
+  }
+  for (int i = 0; i < 4; i++) {                        // dark smoke rising off it
+    float p = fmodf(t * 0.35f + i * 0.25f + seed * 0.11f, 1.0f);
+    int x = sx + (int)(sinf(p * 5 + seed) * 6 + p * 20), y = sy - size * 4 - (int)(p * 90);
+    int r = 3 + (int)(p * 6);
+    for (int j = -r; j <= r; j += 2) for (int i2 = -r; i2 <= r; i2 += 2)
+      if (i2 * i2 + j * j <= r * r) qPxA((x + i2) & ~1, (y + j) & ~1, c565(30, 22, 30), (uint8_t)(140 * (1 - p)));
+  }
+}
+
+void rSamurai(int sx, int sy, int frame, bool flip) {
+  const uint16_t *lut = rReady ? rLut : qIcons();
+  const uint8_t *f = RSAM + frame * RSAM_W * RSAM_H;
+  for (int j = 0; j < RSAM_H; j++) for (int i = 0; i < RSAM_W; i++) {
+    uint8_t v = f[j * RSAM_W + (flip ? RSAM_W - 1 - i : i)];
+    if (v) qPx(sx + i * 2, sy + j * 2, rReady ? lut[v] : c565(RPAL[v][0], RPAL[v][1], RPAL[v][2]));
+  }
+}
+void rFlag(int sx, int sy) {                           // the banner on his back, fluttering
+  float t = millis() / 1000.0f;
+  qRect(sx + 4, sy, 2, 30, rLut[RC_K]);
+  for (int j = 0; j < RFLAG_H; j++) for (int i = 0; i < RFLAG_W; i++) {
+    uint8_t v = RFLAG[j * RFLAG_W + i];
+    if (v) qPx(sx + 6 + i * 2, sy + j * 2 + ((int)(sinf(t * 7 - i * 0.9f) * 1.5f)) * 2, rLut[v]);
+  }
+}
+
+void rMotes(int camR) {
+  float t = millis() / 1000.0f;
+  for (int i = 0; i < 28; i++) {
+    RMote &m = rEmber[i];
+    if (m.ph == 0 || m.y < -6) {
+      m.x = random(0, 240); m.y = m.ph == 0 ? random(0, 280) : random(250, 300);
+      if (RD_FIRES_N && random(0, 3) == 0) { int f = random(0, RD_FIRES_N); m.x = RD_FIRES[f][0] * 2 + random(-10, 11); m.y = RD_FIRES[f][1] * 2 - camR; }
+      m.vx = random(-30, 31) / 100.0f; m.vy = -random(40, 140) / 100.0f; m.ph = random(1, 628) / 100.0f;
+    }
+    m.x += m.vx + sinf(t * 2 + m.ph) * 0.5f; m.y += m.vy;
+    float b = 0.6f + 0.4f * sinf(t * 9 + m.ph * 4);
+    qGlow((int)m.x, (int)m.y, 5, c565(255, 120, 40), (int)(220 * b));
+    qRect((int)m.x & ~1, (int)m.y & ~1, 2, 2, i % 3 ? c565(255, 190, 90) : c565(255, 240, 190));
+  }
+  for (int i = 0; i < 14; i++) {
+    RMote &a = rAsh[i];
+    if (a.ph == 0 || a.y > 284) { a.x = random(0, 240); a.y = a.ph == 0 ? random(0, 280) : -4; a.vx = random(-20, 21) / 100.0f; a.vy = random(20, 60) / 100.0f; a.ph = random(1, 628) / 100.0f; }
+    a.x += a.vx + sinf(t + a.ph) * 0.4f; a.y += a.vy;
+    qRectA((int)a.x & ~1, (int)a.y & ~1, 2, 2, c565(120, 110, 120), 140);
+  }
+}
+
+void rDynamic(int camR, bool pet) {
+  float t = millis() / 1000.0f;
+  for (int i = 0; i < RD_FIRES_N; i++) {
+    int sx = RD_FIRES[i][0] * 2, sy = RD_FIRES[i][1] * 2 - camR;
+    if (sy > -60 && sy < SCR_H + 120) rFlames(sx, sy, 5, t, i * 7);
+  }
+  for (int i = 0; i < RD_LANTERNS_N; i++) {
+    int sx = RD_LANTERNS[i][0] * 2, sy = RD_LANTERNS[i][1] * 2 - camR;
+    if (sy > -30 && sy < SCR_H + 30) qGlow(sx, sy, 22, c565(255, 150, 70), 110 + (int)(sinf(t * 6 + i) * 20));
+  }
+  for (int i = 0; i < RD_FOXEYES_N; i++) {
+    int sx = RD_FOXEYES[i][0] * 2, sy = RD_FOXEYES[i][1] * 2 - camR;
+    if (sy < -10 || sy > SCR_H + 10) continue;
+    bool blink = (frameNo + i * 37) % 120 < 4;
+    if (!blink) { qRect(sx, sy, 2, 2, c565(255, 200, 80)); qGlow(sx + 1, sy + 1, 10, c565(255, 120, 30), 200); }
+  }
+  { int sx = RD_BEACON[0] * 2, sy = RD_BEACON[1] * 2 - camR; if (sy > -40 && sy < SCR_H + 160) rFlames(sx + 2, sy + 6, 9, t, 3); }
+  { int sx = RD_DRUM[0] * 2, sy = RD_DRUM[1] * 2 - camR;
+    if (jbPlaying && sy > -40 && sy < SCR_H + 40) { int ph = (millis() / 120) % 6; gfx->drawCircle(sx, sy, 24 + ph * 4, c565(255, 120, 60)); qGlow(sx, sy, 34, c565(255, 90, 40), 80); } }
+  if (pet) {
+    int sx = RD_PET[0] * 2, sy = RD_PET[1] * 2 - camR;
+    if (sy > -10 && sy < SCR_H + 30) {
+      const char *const *spr = petSpecies == 1 ? GHOST : petSpecies == 2 ? FROG : CAT;
+      int hop = (int)(fabsf(sinf(t * 3)) * 4) & ~1;
+      drawSprite(spr, sx - 12, sy - 24 - hop, 2, mix565(petColor, COL_BLACK, 110), (frameNo % 70) < 3);
+    }
+  }
+}
+
+// The whole scene with the camera at world row camY. sam: draw the samurai.
+void rScene(float camY, bool sam, bool pet = true) {
+  if (!roninInit()) { gfx->fillScreen(c565(10, 6, 14)); return; }
+  rFlicker();
+  int camR = (int)floorf(camY * 2);
+  for (int y = 0; y < SCR_H; y++) { uint16_t c = rSky[y], *p = FB + y * SCR_W; for (int x = 0; x < SCR_W; x++) p[x] = c; }
+  rMoon();
+  float camMax = rCamOfLoc(0);
+  int farOff = (int)floorf(((camY - camMax) * 0.12f + RF_H - 140) * 2);
+  rBlitRows(rFar, rFarA, RF_H * 2, farOff, false);
+  { int sy = RD_CASTLE[1] * 2 - farOff; qGlow(RD_CASTLE[0] * 2, sy, 40, c565(255, 90, 30), 90 + (int)(sinf(millis() / 160.0f) * 25)); }
+  rFireArrows();
+  rBlitRows(rMid, rMidA, RM_H * 2, (int)floorf(camY * 0.45f * 2), true);
+  rBlitWorld(camR);
+  rDynamic(camR, pet);
+  if (sam) {
+    uint32_t ms = millis();
+    bool moving = rMoveAt && ms - rMoveAt < rMoveMs;
+    int sx = 52 * 2, sy = (int)floorf((rFeet - 25) * 2) - camR;
+    if (rEnterAt) {                                    // walking off toward the landmark
+      float p = min(1.0f, (ms - rEnterAt) / 380.0f);
+      bool left = rShown % 2 == 0;
+      sx += (left ? -1 : 1) * (int)(p * 40) & ~1;
+      rFlag(sx + (left ? 14 : -6), sy - 4);
+      rSamurai(sx, sy, 2 + (int)(p * 8) % 4, left);
+    } else if (rSlashAt && ms - rSlashAt < 520) {      // the sword comes out
+      bool left = rShown % 2 == 0;
+      float p = (ms - rSlashAt) / 520.0f;
+      const uint8_t *f = RSLASH;
+      for (int j = 0; j < RSLASH_H; j++) for (int i = 0; i < RSLASH_W; i++) {
+        uint8_t v = f[j * RSLASH_W + (left ? RSLASH_W - 1 - i : i)];
+        if (v) qPx(sx - (left ? 24 : 0) + i * 2, sy + j * 2, rLut[v]);
+      }
+      int cx = sx + (left ? -10 : 42), cy = sy + 30;             // a white arc where the blade went
+      for (int a = 0; a < 18; a++) {
+        float ang = -1.2f + a * 0.14f, r = 26 + (a % 3);
+        if (a / 18.0f > p * 1.6f) break;
+        int x = cx + (left ? -1 : 1) * (int)(cosf(ang) * r), y = cy + (int)(sinf(ang) * r);
+        qPxA(x & ~1, y & ~1, c565(255, 255, 255), (uint8_t)(255 * (1 - p)));
+      }
+      if (p < 0.3f) qGlow(cx, cy, 40, c565(255, 240, 220), (int)(200 * (1 - p / 0.3f)));
+    } else if (moving) {
+      bool up = rDir > 0;
+      int frame = (up ? 6 : 8) + ((int)(fabsf(rFeet) / 7) % 2);
+      if (up) { rSamurai(sx, sy, frame, false); rFlag(sx + 9, sy - 10); }
+      else { rFlag(sx + 9, sy - 10); rSamurai(sx, sy, frame, false); }
+    } else {
+      bool left = rShown % 2 == 0;
+      int frame = (ms / 700) % 2;
+      rFlag(sx + (left ? 14 : -6), sy - 4);
+      rSamurai(sx, sy, frame, left);
+    }
+  }
+  rMotes(camR);
+  rBlitRows(rFg, rFgA, RG_H * 2, (int)floorf(camY * 1.3f * 2), true);
+  float fl = 0.8f + 0.2f * sinf(millis() / 90.0f);                  // the glow of fires below
+  for (int y = 200; y < SCR_H; y += 2) {
+    int a = (int)((y - 200) * 0.45f * fl);
+    uint16_t *r0 = FB + y * SCR_W, *r1 = r0 + SCR_W;
+    for (int x = 0; x < SCR_W; x++) { r0[x] = qAdd(r0[x], c565(255, 70, 30), a); r1[x] = qAdd(r1[x], c565(255, 70, 30), a); }
+  }
+  qDof();
+  qVignette();
+}
+
+void rBackdrop(uint8_t m) {
+  int l = qLocOfMode(m);
+  rScene(rCamOfLoc(l < 0 ? 0 : l), false, m != M_PET);
+}
+
+void roninPlace(int loc) {
+  rLoc = rShown = constrain(loc, 0, RW_N - 1);
+  rFeet = rGY(rLoc); rMoveAt = 0; rArriveAt = millis(); rEnterAt = 0;
+}
+void roninGo(int dir) {
+  int to = constrain(rLoc + dir, 0, RW_N - 1);
+  if (to == rLoc) { toast(dir > 0 ? "The summit" : "The foot of the mountain", 900); return; }
+  rFrom = rFeet; rLoc = to; rDir = dir; rMoveAt = millis();
+  rMoveMs = (uint32_t)(260 + fabsf(rGY(rLoc) - rFrom) * 7.5f);
+  rArriveAt = 0; rEnterAt = 0;
+  sfx(0);
+}
+void roninEnter() { if (!rEnterAt) { rEnterAt = millis(); sfx(4); } }
+void roninSlash() { rSlashAt = millis(); sfx(3); }
+
+void drawRoninHome() {
+  if (!roninInit()) { gfx->fillScreen(c565(10, 6, 14)); qTextC(QF_BODY, "Not enough memory", 120, 130, Q_WHITE); return; }
+  uint32_t ms = millis();
+  if (rMoveAt) {
+    float p = min(1.0f, (ms - rMoveAt) / (float)rMoveMs);
+    float e = p < 0.5f ? 2 * p * p : 1 - powf(-2 * p + 2, 2) / 2;
+    rFeet = rFrom + (rGY(rLoc) - rFrom) * e;
+    if (p >= 1) { rMoveAt = 0; rArriveAt = ms; rShown = rLoc; }
+  }
+  if (rEnterAt && ms - rEnterAt > 400) { rEnterAt = 0; openModule(QLOC_MODE[rShown]); return; }
+  rScene(rFeet - 112, true);
+  qHud();
+  if (rMoveAt) return;
+  float s = min(1.0f, (ms - rArriveAt) / 220.0f); s = 1 - (1 - s) * (1 - s);
+  int y = (284 - (int)(s * 60)) & ~1;
+  const char *name = RLOC_NAME[rShown];
+  int w = max(max(qTextW(QF_TITLE, name), qTextW(QF_BODY, QLOC_SUB[rShown])) + 36, 132);
+  qWindow(120 - w / 2, y, w, 56);
+  qTextC(QF_TITLE, name, 120, y + 3, Q_WHITE, 2, Q_SHADOW);
+  qTextC(QF_BODY, QLOC_SUB[rShown], 120, y + 30, Q_DIM);
+  int bob = ((ms / 300) % 2) * 2;
+  if (rShown < RW_N - 1) qArrow(120, 44 - bob, 2, Q_WHITE);
+  if (rShown > 0 && s >= 1) qArrow(120, 212 + bob, 0, Q_WHITE);
+  bool left = rShown % 2 == 0;
+  if (!rEnterAt && s >= 1) qArrow(left ? 80 - bob : 160 + bob, 196, left ? -1 : 1, Q_GOLD);
+}
+
+// charging: he kneels and rests on the landing below the dojo
+void rCharge() {
+  if (!roninInit()) { gfx->fillScreen(c565(10, 6, 14)); return; }
+  float cam = rCamOfLoc(9);
+  rScene(cam, false, true);
+  int camR = (int)floorf(cam * 2);
+  int sx = 102, sy = (rGY(9) - RSEATED_H + 1) * 2 - camR;
+  for (int j = 0; j < RSEATED_H; j++) for (int i = 0; i < RSEATED_W; i++) { uint8_t v = RSEATED[j * RSEATED_W + i]; if (v) qPx(sx + i * 2, sy + j * 2, rLut[v]); }
+  for (int i = 0; i < 3; i++) {
+    float p = fmodf(millis() / 1800.0f + i / 3.0f, 1.0f);
+    qPxA(sx + 20 + (int)(sinf(p * 6 + i) * 8) & ~1, sy - 6 - (int)(p * 40) & ~1, c565(200, 190, 210), (uint8_t)(160 * (1 - p)));
+  }
+  qHud();
+  qWindow(20, 52, 200, 96);
+  qPlate(charging ? (batPct >= 99 ? "FULLY RESTED" : "RESTING") : "ON THE ROAD", 120, 44);
+  char b[16]; snprintf(b, sizeof(b), "%d%%", batPct);
+  qTextC(QF_BIG, b, 120, 58, charging ? c565(255, 200, 120) : Q_WHITE, 2, Q_SHADOW);
+  float f = batPct / 100.0f;
+  qBar(36, 114, 168, f, charging ? c565(230, 80, 60) : c565(250, 196, 70), c565(255, 200, 160));
+  if (charging) { int sp = (int)((millis() / 12) % 168) & ~1; if (sp < (int)(164 * f)) qRect(38 + sp, 116, 4, 6, c565(255, 255, 255)); }
+  snprintf(b, sizeof(b), "%.2fV", batVolts);
+  qTextC(QF_BODY, b, 120, 126, Q_DIM);
+}
+
+void roninBoot() {
+  roninInit();
+  roninPlace(rLoc);
+  rScene(rCamOfLoc(rLoc), false);
+  for (int i = 0; i < SCR_W * SCR_H; i++) FB[i] = qMul32(FB[i], 18);
+  qTextC(QF_TITLE, "Larp Charm", 120, 96, c565(240, 70, 56), 3, Q_SHADOW);
+  qTextC(QF_BODY, "The long climb", 120, 150, c565(230, 200, 170), 2, Q_SHADOW);
   qTextC(QF_BODY, "Press start", 120, 220, Q_WHITE, 2, Q_SHADOW);
 }
 // ───────────── Screen effects ─────────────
@@ -4107,14 +4485,14 @@ void drawScene() {
     case M_JUKE:  drawJuke();  break;
     case M_TORCH: drawTorch(); break;
     case M_CHARGE: drawCharge(); break;
-    default:      if (skin == SKIN_QUEST) drawQuestHome(); else if (skin) drawAeroHome(); else drawDeck(); break;
+    default:      if (skin == SKIN_RONIN) drawRoninHome(); else if (skin == SKIN_QUEST) drawQuestHome(); else if (skin) drawAeroHome(); else drawDeck(); break;
   }
 }
 
 void render() {
   updateAccent();
   drawScene();
-  if (skin == SKIN_QUEST) questPost();
+  if (PIXEL_SKIN) questPost();
   if (mode == M_CLOCK || mode == M_PET || mode == M_TOY || mode == M_CARD) drawTicker();
   bool fx = !skin && fxOn;
   if (fx && mode != M_PHOTO && mode != M_CLIP && mode != M_MUSIC && mode != M_TORCH) scanlines();
@@ -4185,7 +4563,7 @@ void aeroZoom(int oi, bool opening) {
 }
 
 void openModule(int m) {
-  if (mode == M_DECK) { sfx(1); if (skin == SKIN_QUEST) questTransitionOut(); else if (skin) aeroZoom(orbOfMode(m), true); else zoomAnim(tileOfMode(m), true); }
+  if (mode == M_DECK) { sfx(1); if (PIXEL_SKIN) questTransitionOut(); else if (skin) aeroZoom(orbOfMode(m), true); else zoomAnim(tileOfMode(m), true); }
   setMode(m);
   lastFrame = 0;
 }
@@ -4195,10 +4573,10 @@ void closeModule() {
   if (mode == M_CHARGE) { setMode(chargeReturn == M_CHARGE ? M_DECK : chargeReturn); lastFrame = 0; return; }
   int ti = tileOfMode(mode), oi = orbOfMode(mode);
   sfx(1);
-  if (skin == SKIN_QUEST) {
+  if (PIXEL_SKIN) {
     int ql = qLocOfMode(mode);
     questTransitionOut();
-    if (ql >= 0) questPlace(qLoc - qMod(qLoc, QW_NLOC) + ql);
+    if (ql >= 0) { if (skin == SKIN_RONIN) roninPlace(ql); else questPlace(qLoc - qMod(qLoc, QW_NLOC) + ql); }
     setMode(M_DECK);
     lastFrame = 0;
     return;
@@ -4706,11 +5084,12 @@ void cycleAero(int dir) {
 void setSkin(uint8_t s) {
   skin = s % SKIN_COUNT;
   if (skin == SKIN_QUEST && questInit()) { qLightUpdate(true); int l = qLocOfMode(mode); questPlace(l >= 0 ? l : qMod(qLoc, QW_NLOC)); }
+  if (skin == SKIN_RONIN && roninInit()) { int l = qLocOfMode(mode); roninPlace(l >= 0 ? l : rLoc); }
   prefs.putUChar("skin", skin);
   if (skin == SKIN_AERO) { orbitFocus(max(0, orbOfMode(mode)), true); buildOrbSprites(); buildHomeBase(); }
   glitchFrames = skin == SKIN_DECK ? 5 : 0;
   snapAccent();
-  toast(skin == SKIN_QUEST ? "Quest" : skin == SKIN_AERO ? "Aero" : "Deck", 900);
+  toast(skin == SKIN_RONIN ? "Ronin" : skin == SKIN_QUEST ? "Quest" : skin == SKIN_AERO ? "Aero" : "Deck", 900);
   sfx(2);
   lastFrame = 0;
 }
@@ -4726,6 +5105,7 @@ void onSwipe(int dir) {
   switch (mode) {
     case M_DECK:
       if (skin == SKIN_QUEST) { questGo(dir); break; }
+      if (skin == SKIN_RONIN) break;
       if (skin == SKIN_DECK) {
         theme = (theme + THEME_COUNT + dir) % THEME_COUNT;
         prefs.putUChar("theme", theme);
@@ -4770,7 +5150,9 @@ void onSwipe(int dir) {
 }
 
 // Swipe down closes whatever is open. On the home screen, up and down change brightness.
+void roninGo(int dir);
 void onVSwipe(int up) {
+  if (mode == M_DECK && skin == SKIN_RONIN) { roninGo(up > 0 ? 1 : -1); return; }
   if (up < 0 && mode != M_DECK) { closeModule(); return; }
   if (mode == M_TORCH) return;
   setBacklight(brightness + (up > 0 ? 40 : -40));
@@ -4782,6 +5164,13 @@ void onTap(bool dbl) {
   sfx(0);
   switch (mode) {
     case M_DECK:
+      if (skin == SKIN_RONIN) {
+        if (rMoveAt) roninGo(tch.y0 < 140 ? 1 : -1);
+        else if (tch.y0 < 92) roninGo(1);
+        else if (tch.y0 > 196) roninGo(-1);
+        else roninEnter();
+        break;
+      }
       if (skin == SKIN_QUEST) {
         if (qWalkAt) questGo(tch.x0 < 120 ? -1 : 1);
         else if (tch.x0 < 66) questGo(-1);
@@ -4839,7 +5228,7 @@ void onTap(bool dbl) {
       sfx(4);
       break;
     case M_JUKE:
-      if (skin == SKIN_QUEST) { questJukeTap(tch.x0, tch.y0); break; }
+      if (PIXEL_SKIN) { questJukeTap(tch.x0, tch.y0); break; }
       if (skin == SKIN_AERO) {
         int show = (jbPlaying && millis() > jbSelUntil) ? jbSong : jbSelId;
         if (tch.y0 < 148) { if (jbPlaying) jbStop(); else jbStartSong(jbSelId); }
@@ -4869,6 +5258,7 @@ void onShake() {
   switch (mode) {
     case M_DECK:
       if (skin == SKIN_QUEST) { questJump(); break; }
+      if (skin == SKIN_RONIN) { roninSlash(); break; }
       // fall through
     case M_CLOCK: if (skin == SKIN_AERO) cycleAero(1); else cycleBg(1); break;
     case M_PET:
@@ -5118,8 +5508,8 @@ void setup() {
   // boot log: each line is a real check
   FB = gfx->getFramebuffer();
   snapAccent();
-  if (skin == SKIN_QUEST) {
-    gfx->fillScreen(c565(14, 18, 56));
+  if (PIXEL_SKIN) {
+    gfx->fillScreen(skin == SKIN_RONIN ? c565(10, 6, 14) : c565(14, 18, 56));
     gfx->flush();
   } else if (skin) {
     verticalGradient(c565(30, 120, 230), c565(190, 236, 255));
@@ -5179,7 +5569,8 @@ void setup() {
   snprintf(pw, sizeof(pw), "%d%% %.2fV", batPct, batVolts);
   bootLine("power", pw, batPct > 15);
 
-  if (skin == SKIN_QUEST) questBoot();
+  if (skin == SKIN_RONIN) roninBoot();
+  else if (skin == SKIN_QUEST) questBoot();
   else if (skin) {
     buildOrbSprites();
     buildHomeBase();
@@ -5196,6 +5587,7 @@ void setup() {
   else setMode(mode, false);
   if (skin == SKIN_AERO) orbitFocus(max(0, orbOfMode(chargeReturn)), true);
   if (skin == SKIN_QUEST) { int l = qLocOfMode(mode); if (l >= 0) questPlace(l); }
+  if (skin == SKIN_RONIN) { int l = qLocOfMode(mode); if (l >= 0) roninPlace(l); }
   glitchFrames = 5;
 }
 
