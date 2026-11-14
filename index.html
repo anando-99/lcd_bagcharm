@@ -7,7 +7,7 @@
 <title>Larp Charm</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Silkscreen&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Nunito:wght@700;800;900&family=Silkscreen&display=swap" rel="stylesheet">
 <style>
 :root{
   --base:#170D3A; --deep:#0E0726; --panel:#21134F; --raise:#2C1A66; --edge:#4A35A0;
@@ -216,6 +216,42 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 .hud{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;background:var(--deep);color:var(--acc);font-weight:600;padding:11px 20px;
   box-shadow:inset 0 0 0 1px var(--acc), 0 12px 30px -10px rgba(0,0,0,.8);transition:opacity .18s, transform .18s;pointer-events:none;z-index:50;max-width:calc(100% - 32px);text-align:center}
 .hud.on{opacity:1;transform:translate(-50%,0)}
+
+/* look picker */
+.looks{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){ .looks{grid-template-columns:1fr} }
+.lookcard{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;cursor:pointer;border:0;padding:12px;background:var(--deep);color:var(--text);box-shadow:inset 0 0 0 1px var(--edge)}
+.lookcard b{font-size:17px}
+.lookcard small{color:var(--soft);font-size:13.5px;line-height:1.4}
+.lookcard.on{box-shadow:inset 0 0 0 2px var(--acc)}
+.lookcard > span{display:block;width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;margin-bottom:6px}
+.lk-deck{background:#03050c;background-image:radial-gradient(circle,#123 1px,transparent 1.4px);background-size:10px 10px}
+.lk-deck i{position:absolute;border:1px solid var(--acc)}
+.lk-deck i:nth-child(1){left:6%;top:8%;width:88%;height:30%}.lk-deck i:nth-child(2){left:6%;top:44%;width:56%;height:26%}
+.lk-deck i:nth-child(3){left:66%;top:44%;width:28%;height:26%}.lk-deck i:nth-child(4){left:6%;top:76%;width:40%;height:16%}.lk-deck i:nth-child(5){left:50%;top:76%;width:44%;height:16%}
+.lk-aero{background:linear-gradient(#1a6fd6,#7cc4ff 55%,#7cc23e 56%,#2f8f2c);border-radius:14px}
+.lk-aero i{position:absolute;bottom:18%;width:18%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 30%,#fff 0 18%,transparent 40%),radial-gradient(circle at 50% 80%,#ffffff99,transparent 60%),var(--c);box-shadow:0 2px 4px #0005}
+.lk-aero i:nth-child(1){left:6%;--c:#8c46ff;transform:scale(.7)}.lk-aero i:nth-child(2){left:22%;--c:#ff46a0;transform:scale(.85)}.lk-aero i:nth-child(3){left:41%;--c:#008cff;transform:scale(1.15)}
+.lk-aero i:nth-child(4){left:60%;--c:#28be46;transform:scale(.85)}.lk-aero i:nth-child(5){left:76%;--c:#ffc400;transform:scale(.7)}
+/* eyes */
+.exprs{display:flex;flex-wrap:wrap;gap:8px}
+.exprs button{border:0;cursor:pointer;padding:8px 12px;background:var(--deep);color:var(--soft);font-weight:600;font-size:14px;box-shadow:inset 0 0 0 1px var(--edge)}
+.exprs button:hover{color:var(--text)}
+.exprs button.on{background:var(--acc);color:var(--on-acc);box-shadow:none}
+/* jukebox */
+.songs{list-style:none;margin:0;padding:1px;display:grid;gap:1px;background:var(--edge)}
+.songs li{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 14px;background:var(--deep)}
+.songs li span{flex:1;min-width:0;font-weight:600}
+.songs li small{display:block;color:var(--soft);font-weight:400;font-size:13px}
+.songs li.playing{box-shadow:inset 3px 0 0 var(--acc)}
+.songs li.playing span{color:var(--acc)}
+.songs .listen{background:none;border:0;color:var(--soft);font-weight:600;cursor:pointer;padding:6px 8px;font-size:13.5px}
+.songs .listen:hover,.songs .listen.on{color:var(--acc)}
+.queue{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--soft);font-size:14.5px}
+.queue-btns{display:flex;gap:8px}
+@media (max-width:560px){ .songs li{flex-wrap:wrap} .songs li span{flex-basis:100%} .songs li .listen{margin-left:-8px;margin-right:auto} }
+.steps{margin:18px 0 0;color:var(--soft)}
+.steps b{color:var(--text);font-size:20px}
 @media (prefers-reduced-motion:reduce){ *{transition:none !important} html{scroll-behavior:auto} }
 </style>
 </head>
@@ -223,6 +259,9 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-deck" viewBox="0 0 28 28"><path d="M4 4h20v8H4zM4 15h11v9H4zM18 15h6v9h-6z"/></symbol>
+  <symbol id="i-eyes" viewBox="0 0 28 28"><path d="M4 8h8v12H4zM16 8h8v12h-8z"/></symbol>
+  <symbol id="i-jbx" viewBox="0 0 28 28"><path d="M9 20V7l13-3v13"/><circle cx="6.500" cy="20" r="2.500"/><circle cx="19.500" cy="17" r="2.500"/></symbol>
+  <symbol id="i-torch" viewBox="0 0 28 28"><path d="M10 4h8l-1 8h-6zM11 12h6v12h-6zM14 16v3"/></symbol>
   <symbol id="i-clock" viewBox="0 0 28 28"><circle cx="14" cy="14" r="10.5"/><path d="M14 8v6.5l4 2"/></symbol>
   <symbol id="i-text" viewBox="0 0 28 28"><path d="M5 8h18M5 14h18M5 20h10"/></symbol>
   <symbol id="i-photo" viewBox="0 0 28 28"><rect x="4" y="5" width="20" height="18" rx="4"/><circle cx="10" cy="11" r="2"/><path d="M4.5 20l6-5 4.500 3.500 3-2.500 5.500 4"/></symbol>
@@ -241,7 +280,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
   <div class="bar-in">
     <span class="word">larp<i>//</i>charm</span>
     <div class="bar-right">
-      <span class="status"><span class="bat" id="bat"><svg class="bolt" viewBox="0 0 9 12"><path d="M5.500 0L0 7h3.500L2.500 12 9 4.500H5L5.500 0z" /></svg><span class="bat-shell"><span class="bat-fill" id="batFill"></span></span><span id="batPct"></span></span></span>
+      <span class="status"><span class="bat" id="bat"><svg class="bolt" viewBox="0 0 9 12"><path d="M5.500 0L0 7h3.500L2.500 12 9 4.500H5L5.500 0z" /></svg><span id="batPct"></span></span></span>
       <span class="status"><span class="dot" id="dot"></span><span id="connText">Not connected</span></span>
       <button class="btn sm" id="connectBtn">Connect</button>
     </div>
@@ -258,7 +297,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <div class="shell"><canvas id="heroCv" width="240" height="280"></canvas><span class="nub"></span></div>
       </div>
     </div>
-    <p class="poke" id="pokeNote">This is the deck. Tap a block to open it, tap again to go back.</p>
+    <p class="poke" id="pokeNote">A working copy of your charm. Tap a block to open it, tap again to go back.</p>
   </aside>
 
   <div class="panels">
@@ -285,6 +324,24 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <button class="tile" data-m="2"><svg><use href="#i-photo"/></svg>Img</button>
         <button class="tile" data-m="3"><svg><use href="#i-clip"/></svg>Vid</button>
         <button class="tile" data-m="7"><svg><use href="#i-card"/></svg>ID</button>
+        <button class="tile" data-m="9"><svg><use href="#i-eyes"/></svg>Eyes</button>
+        <button class="tile" data-m="10"><svg><use href="#i-jbx"/></svg>Jukebox</button>
+        <button class="tile" data-m="11"><svg><use href="#i-torch"/></svg>Torch</button>
+      </div>
+    </section>
+
+    <section class="panel" id="skin">
+      <span class="tag">LOOK</span>
+      <h2>Pick a look</h2>
+      <p class="lede">Two complete looks for the same charm. Switch here, or press and hold the home screen on the charm.</p>
+      <div class="looks" id="skins">
+        <button class="lookcard on" data-v="0"><span class="lk-deck"><i></i><i></i><i></i><i></i><i></i></span><b>Deck</b><small>Cyberdeck. Everything on one screen, tap a block to open it.</small></button>
+        <button class="lookcard" data-v="1"><span class="lk-aero"><i></i><i></i><i></i><i></i><i></i></span><b>Aero</b><small>Glossy and bubbly. Spin a ring of orbs by dragging or tilting the charm.</small></button>
+      </div>
+      <div class="field" id="aeroStyles" style="margin-top:20px">
+        <span class="label">Aero style</span>
+        <div class="seg" id="aeroSeg"><button data-v="0" class="on">Meadow</button><button data-v="1">Ocean</button><button data-v="2">Bubblegum</button></div>
+        <p class="hint">On the charm: shake it on the home screen, or swipe sideways on the clock.</p>
       </div>
     </section>
 
@@ -417,6 +474,37 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 
     <canvas id="artCv" width="240" height="280" class="hidden"></canvas>
 
+    <section class="panel" id="eyes">
+      <span class="tag">EYES</span>
+      <h2>Eyes</h2>
+      <p class="lede">Two blue eyes that look around, blink, follow you as you tilt the charm, and react when you tap them. Pick a mood, or let them choose.</p>
+      <div class="exprs" id="exprs">
+        <button data-v="255" class="on">Let them choose</button>
+        <button data-v="0">Calm</button><button data-v="1">Happy</button><button data-v="2">Laughing</button><button data-v="3">Sad</button>
+        <button data-v="4">Angry</button><button data-v="5">Surprised</button><button data-v="6">Sleepy</button><button data-v="7">Bored</button>
+        <button data-v="8">Suspicious</button><button data-v="9">Wink</button><button data-v="10">Love</button><button data-v="11">Dizzy</button>
+      </div>
+      <p class="hint">A picked mood lasts ten seconds, then they go back to doing their own thing. On the charm: tap for a reaction, double tap for love, shake to make them dizzy.</p>
+      <label class="field switch" style="margin-top:14px"><span>Eyes when idle<small>Instead of switching straight off, the screen shows the eyes dozing off first.</small></span><input type="checkbox" id="optEyesIdle"></label>
+    </section>
+
+    <section class="panel" id="jukebox">
+      <span class="tag">JUKEBOX</span>
+      <h2>Jukebox</h2>
+      <p class="lede">Ten old tunes the charm plays on its buzzer. Play one now, or line a few up and it plays them in order.</p>
+      <ul class="songs" id="songList"></ul>
+      <div class="queue"><span id="jbNow">Nothing playing.</span><span class="queue-btns"><button class="btn plain sm" id="jbSkip">Skip</button><button class="btn plain sm" id="jbStop">Stop</button></span></div>
+      <p class="hint">“Listen” plays it here in your browser so you know what you’re getting. The buzzer can only play one note at a time, so these are melodies, not full songs.</p>
+    </section>
+
+    <section class="panel" id="torch">
+      <span class="tag">TORCH</span>
+      <h2>Torch</h2>
+      <p class="lede">Turns the whole screen into a light, at full brightness, for digging around in your bag. It switches itself off after five minutes.</p>
+      <div class="field"><span class="label">Colour</span><div class="seg" id="torchSeg"><button data-v="0" class="on">White</button><button data-v="1">Warm</button><button data-v="2">Red</button><button data-v="3">Ice</button></div></div>
+      <div class="actions"><button class="btn" id="torchOn">Turn on</button><button class="btn plain" id="torchOff">Turn off</button></div>
+    </section>
+
     <section class="panel" id="pet">
       <span class="tag">DAEMON</span>
       <h2>Daemon</h2>
@@ -427,6 +515,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <div class="grow field"><span class="label">Colour</span><div class="swatches" data-target="petCol" data-colors="#ffc478,#ff9fb2,#a7f3d0,#c4b5fd,#7dd3fc,#f5f5f7"></div><input type="hidden" id="petCol" value="#ffc478"></div>
       </div>
       <div class="actions"><button class="btn" id="sendPet">Update pet</button><button class="btn gum" id="feedPet">Feed</button></div>
+      <p class="steps"><b id="stepCount">–</b> steps today. The charm counts them with its motion sensor, and every 200 cheers your pet up a little.</p>
     </section>
 
     <section class="panel" id="toys">
@@ -472,11 +561,12 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
         <select id="sleep"><option value="10">10 seconds</option><option value="30" selected>30 seconds</option><option value="60">1 minute</option><option value="120">2 minutes</option><option value="300">5 minutes</option><option value="0">Never</option></select>
         <p class="hint">“Never” keeps a clip or background playing all day and drains the battery faster.</p>
       </div>
-      <label class="field switch"><span>Scanlines and glitches<small>The old-monitor look. Turn off for a cleaner screen.</small></span><input type="checkbox" id="optFx" checked></label>
+      <label class="field switch"><span>Scanlines and glitches<small>The old-monitor look in the Deck look. Turn off for a cleaner screen.</small></span><input type="checkbox" id="optFx" checked></label>
       <label class="field switch"><span>Sounds<small>Short beeps when you swipe, tap and roll.</small></span><input type="checkbox" id="optSound" checked></label>
       <label class="field switch"><span>Shake to wake<small>A firm shake turns the screen back on.</small></span><input type="checkbox" id="optShake" checked></label>
       <label class="field switch"><span>Chime every hour</span><input type="checkbox" id="optChime"></label>
       <label class="field switch"><span>Reverse sideways swipes</span><input type="checkbox" id="swap"></label>
+      <label class="field switch"><span>Tilt to spin<small>In the Aero look, tilting the charm sideways spins the ring of orbs.</small></span><input type="checkbox" id="optTilt" checked></label>
       <div class="actions"><button class="btn plain" id="syncTime">Sync time</button><button class="btn plain" id="findMe">Make it beep</button></div>
       <hr class="divide">
       <h3 class="sub">Is the snow falling the wrong way?</h3>
@@ -492,15 +582,16 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       <h2>On the charm itself</h2>
       <p class="lede">No app needed for these.</p>
       <ul class="cheat">
-        <li><b>Tap a block</b><span>Opens it full screen.</span></li>
-        <li><b>Swipe down</b><span>Closes it, back to the deck. The side button does the same.</span></li>
-        <li><b>Swipe sideways</b><span>Deck: colour. Chrono: backdrop. Audio: next or previous song. Vid: next clip. Msg: style. RNG: switch toy.</span></li>
-        <li><b>Tap inside a block</b><span>Chrono: clock style. Audio: left back, middle pause, right skip. Daemon: a pat. RNG: roll.</span></li>
-        <li><b>Double tap</b><span>Chrono: 12 or 24 hour. Daemon: feeds it.</span></li>
-        <li><b>Swipe up or down on the deck</b><span>Brighter or dimmer.</span></li>
-        <li><b>Press and hold</b><span>Shows your ID card, from anywhere.</span></li>
-        <li><b>Shake</b><span>Deck and Chrono: new backdrop. Daemon: dizzy. RNG: roll. Asleep: wake up.</span></li>
-        <li><b>Side button on the deck</b><span>Screen off.</span></li>
+        <li><b>Press and hold the home screen</b><span>Switches between Deck and Aero.</span></li>
+        <li><b>Deck: tap a block</b><span>Opens it full screen.</span></li>
+        <li><b>Aero: drag sideways or tilt</b><span>Spins the ring. Tap the front orb to open it, or any other orb to bring it to the front.</span></li>
+        <li><b>Swipe down</b><span>Closes whatever is open. The side button does the same.</span></li>
+        <li><b>Swipe sideways</b><span>Deck home: colour. Clock: backdrop or style. Music: next or previous song. Eyes: next mood. Jukebox: skip, or pick a song in Aero.</span></li>
+        <li><b>Tap inside a block</b><span>Clock: clock style. Music: left back, middle pause, right skip. Eyes: a reaction. Jukebox: queue a song. Dice: roll.</span></li>
+        <li><b>Double tap</b><span>Clock: 12 or 24 hour. Pet: feeds it. Eyes: love.</span></li>
+        <li><b>Press and hold anywhere else</b><span>Shows your ID card.</span></li>
+        <li><b>Shake</b><span>Home and clock: new backdrop. Pet and eyes: dizzy. Dice: roll. Jukebox: a random song. Asleep: wake up.</span></li>
+        <li><b>Plug it in</b><span>Shows the charging screen. Tap it or unplug to go back.</span></li>
       </ul>
     </section>
   </div>
@@ -510,6 +601,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 
 <div class="hud" id="hud" role="status"></div>
 
+<script src="songs.js"></script>
 <script src="app.js"></script>
 <script src="charm.js"></script>
 </body>
