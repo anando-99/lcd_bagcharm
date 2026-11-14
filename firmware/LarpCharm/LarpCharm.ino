@@ -48,6 +48,7 @@
 
 // shape of one eye (kept up here so the IDE's generated prototypes can see it)
 struct EyeShape { float w, h, rad, lidT, slope, lidB; };
+struct OrbSprite { uint16_t *px; uint8_t *a; };
 
 // ───────────── Pins (Waveshare docs) ─────────────
 #define LCD_DC    4
@@ -76,7 +77,7 @@ struct EyeShape { float w, h, rad, lidT, slope, lidB; };
 #define SVC_UUID    "6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee"
 #define RX_UUID     "6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee"
 #define STATUS_UUID "6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee"
-#define FW_VERSION  "5.0"
+#define FW_VERSION  "5.1"
 #define DEVICE_NAME "Larp Charm"
 
 enum Cmd : uint8_t {
@@ -105,6 +106,8 @@ enum Cmd : uint8_t {
   CMD_EYES        = 0x17, // [expression 0..11, 255 = automatic]
   CMD_TUNE        = 0x18, // [op 0=stop 1=play now 2=add to queue 3=skip][song ids...]
   CMD_TORCH       = 0x19, // [on 0/1][colour 0..3]
+  CMD_SONG_LIST   = 0x1A, // -> "song=id,notes,name" ... "songs=end"
+  CMD_SONG_DELETE = 0x1B, // [song id 100..107]
 };
 
 enum Mode : uint8_t { M_CLOCK = 0, M_TEXT, M_PHOTO, M_CLIP, M_MUSIC, M_PET, M_TOY, M_CARD, M_DECK, M_EYES, M_JUKE, M_TORCH, M_CHARGE, M_COUNT };
@@ -278,7 +281,10 @@ float    batVolts = 4.0;
 int      batPct = 80;
 bool     charging = false;
 uint32_t chargeSeenAt = 0;
-float    vHist[12];
+float    vHist[12], vSlow[6], vFast = 4.0f;
+int      vSlowN = 0;
+uint32_t lastSlowAt = 0;
+bool     wallPower = false;
 int      vHistN = 0;
 uint32_t lastBatRead = 0, lastStatus = 0;
 uint32_t toastUntil = 0;
@@ -735,7 +741,7 @@ void drawTransferOverlay() {
 }
 
 // what a screen shows when it has nothing to show yet
-void aeroBackdrop();
+void aeroBackdrop(const uint16_t *base = nullptr);
 void emptyState(const char *label, const char *big, const char *l1, const char *l2) {
   if (skin) {
     aeroBackdrop();
@@ -1012,9 +1018,10 @@ void initAeroBubbles() {
     abub[i].r = 3 + random(0, 9); abub[i].v = 0.25f + random(0, 60) / 100.0f; abub[i].ph = random(0, 628) / 100.0f;
   }
 }
-void aeroBackdrop() {
+void aeroBackdrop(const uint16_t *base) {
   buildAeroBg();
-  if (aeroBg && FB) memcpy(FB, aeroBg, FB_BYTES); else gfx->fillScreen(c565(80, 170, 240));
+  if (!base) base = aeroBg;
+  if (base && FB) memcpy(FB, base, FB_BYTES); else gfx->fillScreen(c565(80, 170, 240));
   int n = aeroVar == 1 ? 12 : 7;
   for (int i = 0; i < n; i++) {
     AeroBubble &b = abub[i];
@@ -2017,10 +2024,98 @@ const uint16_t ORB_COL[ORB_N] = { c565(0, 140, 255), c565(255, 70, 160), c565(20
 #define ORBIT_CY  184
 #define ORBIT_RX  90
 #define ORBIT_RY  26
-float    orbitA = 0, orbitV = 0, orbitGoal = 0;
+float    orbitA = 0, orbitV = 0, orbitGoal = 0, orbitFlick = 0;
 bool     orbitDrag = false, orbitGoalOn = false;
 int      orbitLastX = 0, orbFront = 0;
-uint32_t lastTouchUp = 0;
+uint32_t lastTouchUp = 0, orbitLastT = 0, orbitFrameT = 0;
+
+// Each orb is drawn once per size into PSRAM at start-up, then just copied each frame.
+#define ORB_RMIN 9
+#define ORB_RMAX 28
+OrbSprite orbSpr[ORB_N][ORB_RMAX - ORB_RMIN + 1];
+bool      orbSprReady = false;
+uint16_t *homeBase = nullptr;                   // backdrop + clock pane + track, rebuilt when the style changes
+int8_t    homeBaseVar = -1;
+
+void renderOrbSprite(OrbSprite &sp, int r, uint16_t base) {
+  float br = r8(base), bg = g8(base), bb = b8(base), rr = r;
+  int sz = 2 * r + 2;
+  for (int y = -r - 1; y <= r; y++) {
+    float ny = (y + 0.5f) / rr;
+    for (int x = -r - 1; x <= r; x++) {
+      int idx = (y + r + 1) * sz + (x + r + 1);
+      float nx = (x + 0.5f) / rr, d2 = nx * nx + ny * ny, d = sqrtf(d2);
+      float a = clamp01((1.0f - d) * rr + 0.5f);
+      sp.a[idx] = (uint8_t)(a * 255);
+      if (a <= 0) { sp.px[idx] = 0; continue; }
+      float k = 0.58f + 0.42f * (ny + 1) * 0.5f;
+      float cr = br * k, cg = bg * k, cb = bb * k;
+      float glow = clamp01((ny - 0.15f) * 1.4f) * clamp01(1.15f - d) * 0.75f;
+      cr = scr(cr, glow * 0.6f); cg = scr(cg, glow * 0.6f); cb = scr(cb, glow * 0.6f);
+      float rim = d2 * d2 * 0.35f;
+      cr *= 1 - rim; cg *= 1 - rim; cb *= 1 - rim;
+      float ex = nx / 0.74f, ey = (ny + 0.47f) / 0.40f, e2 = ex * ex + ey * ey;
+      if (e2 < 1) {
+        float s = clamp01((1 - e2) * 4.0f) * (0.92f - 0.62f * clamp01((ny + 0.87f) / 0.8f));
+        cr = scr(cr, s); cg = scr(cg, s); cb = scr(cb, s);
+      }
+      sp.px[idx] = rgbf(cr, cg, cb);
+    }
+  }
+}
+void buildOrbSprites() {
+  if (orbSprReady) return;
+  size_t total = 0;
+  for (int r = ORB_RMIN; r <= ORB_RMAX; r++) total += (size_t)(2 * r + 2) * (2 * r + 2) * 3;
+  uint8_t *mem = (uint8_t *)ps_malloc(total * ORB_N);
+  if (!mem) return;
+  for (int i = 0; i < ORB_N; i++)
+    for (int r = ORB_RMIN; r <= ORB_RMAX; r++) {
+      size_t n = (size_t)(2 * r + 2) * (2 * r + 2);
+      OrbSprite &sp = orbSpr[i][r - ORB_RMIN];
+      sp.px = (uint16_t *)mem; mem += n * 2;
+      sp.a = mem; mem += n;
+      renderOrbSprite(sp, r, ORB_COL[i]);
+    }
+  orbSprReady = true;
+}
+void blitOrb(int i, int cx, int cy, int r, float fade) {
+  if (!orbSprReady || !FB) { glossOrb(cx, cy, r, ORB_COL[i], fade); return; }
+  r = constrain(r, ORB_RMIN, ORB_RMAX);
+  const OrbSprite &sp = orbSpr[i][r - ORB_RMIN];
+  int sz = 2 * r + 2, x0 = cx - r - 1, y0 = cy - r - 1;
+  uint16_t f = (uint16_t)(fade * 256);
+  for (int j = 0; j < sz; j++) {
+    int y = y0 + j;
+    if ((unsigned)y >= SCR_H) continue;
+    uint16_t *row = FB + y * SCR_W;
+    const uint16_t *sp16 = sp.px + j * sz;
+    const uint8_t *sa = sp.a + j * sz;
+    for (int k = 0; k < sz; k++) {
+      int x = x0 + k;
+      if ((unsigned)x >= SCR_W) continue;
+      uint8_t a = (uint8_t)((sa[k] * f) >> 8);
+      if (a >= 8) row[x] = blend565(row[x], sp16[k], a);
+    }
+  }
+}
+void buildHomeBase() {
+  buildAeroBg();
+  if (!homeBase || !aeroBg || homeBaseVar == (int8_t)aeroVar) return;
+  memcpy(homeBase, aeroBg, FB_BYTES);
+  uint16_t *screen = FB;
+  FB = homeBase;
+  glassPanel(16, 32, 208, 92, 22);
+  for (int k = 0; k < 180; k++) {
+    float a = k * 6.2831853f / 180;
+    blendPx(ORBIT_CX + (int)(sinf(a) * ORBIT_RX), ORBIT_CY + (int)(cosf(a) * ORBIT_RY), COL_WHITE, cosf(a) > 0 ? 150 : 80);
+  }
+  FB = screen;
+  homeBaseVar = aeroVar;
+}
+bool orbitMoving() {
+  return orbitDrag || orbitGoalOn || fabsf(orbitV) > 0.002f || fabsf(orbitA - roundf(orbitA / ORB_STEP) * ORB_STEP) > 0.002f;
+}
 int16_t  orbX[ORB_N], orbY[ORB_N], orbR[ORB_N];
 uint8_t  orbOrder[ORB_N];
 
@@ -2099,26 +2194,37 @@ void orbGlyph(int i, int x, int y, int r) {
 }
 
 void drawAeroHome() {
+  // physics in units of a 30 fps frame, so the spin feels the same however fast frames come
+  uint32_t nowT = millis();
+  float dt = orbitFrameT ? constrain((nowT - orbitFrameT) / 33.3f, 0.2f, 3.0f) : 1.0f;
+  orbitFrameT = nowT;
   if (!orbitDrag) {
     if (orbitGoalOn) {
-      orbitA += (orbitGoal - orbitA) * 0.24f;
+      orbitA += (orbitGoal - orbitA) * (1 - powf(0.74f, dt));
       if (fabsf(orbitGoal - orbitA) < 0.003f) { orbitA = orbitGoal; orbitGoalOn = false; }
     } else {
-      if (tiltSpin && imuOK && millis() - lastTouchUp > 800 && fabsf(tiltX) > 0.35f)
-        orbitV += (tiltX > 0 ? tiltX - 0.35f : tiltX + 0.35f) * 0.012f;
-      orbitA += orbitV;
-      orbitV *= 0.9f;
-      if (fabsf(orbitV) < 0.006f) { float target = roundf(orbitA / ORB_STEP) * ORB_STEP; orbitA += (target - orbitA) * 0.2f; }
+      if (tiltSpin && imuOK && nowT - lastTouchUp > 800 && fabsf(tiltX) > 0.35f)
+        orbitV += (tiltX > 0 ? tiltX - 0.35f : tiltX + 0.35f) * 0.012f * dt;
+      orbitA += orbitV * dt;
+      orbitV *= powf(0.92f, dt);
+      if (fabsf(orbitV) < 0.014f) {                     // settle into the nearest slot with a soft spring
+        float target = roundf(orbitA / ORB_STEP) * ORB_STEP;
+        orbitV += (target - orbitA) * 0.09f * dt;
+        orbitV *= powf(0.72f, dt);
+        if (fabsf(target - orbitA) < 0.0015f && fabsf(orbitV) < 0.001f) { orbitA = target; orbitV = 0; }
+      }
     }
   }
   int f = ((int)lroundf(-orbitA / ORB_STEP) % ORB_N + ORB_N) % ORB_N;
   if (f != orbFront) { orbFront = f; sfx(0); }
 
-  aeroBackdrop();
+  buildOrbSprites();
+  buildHomeBase();
+  aeroBackdrop(homeBaseVar == (int8_t)aeroVar ? homeBase : nullptr);
   aeroTopBar(false);
 
-  // clock in a glass pane
-  glassPanel(16, 32, 208, 92, 22);
+  // clock in a glass pane (the pane itself is part of homeBase)
+  if (homeBaseVar != (int8_t)aeroVar) glassPanel(16, 32, 208, 92, 22);
   struct tm t;
   char buf[32];
   if (localNow(t)) {
@@ -2137,18 +2243,14 @@ void drawAeroHome() {
     aaText(F_S, buf, 208 - aaWidth(F_S, buf), 115, AERO_INK);
   }
 
-  // the orbit track
-  for (int k = 0; k < 180; k++) {
-    float a = k * 6.2831853f / 180;
-    blendPx(ORBIT_CX + (int)(sinf(a) * ORBIT_RX), ORBIT_CY + (int)(cosf(a) * ORBIT_RY), COL_WHITE, cosf(a) > 0 ? 150 : 80);
-  }
+
   float depth[ORB_N];
   for (int i = 0; i < ORB_N; i++) {
     float th = orbitA + i * ORB_STEP, c = cosf(th);
     depth[i] = (c + 1) * 0.5f;
-    orbX[i] = ORBIT_CX + (int)(sinf(th) * ORBIT_RX);
-    orbY[i] = ORBIT_CY + (int)(c * ORBIT_RY);
-    orbR[i] = 9 + (int)(19 * powf(depth[i], 1.6f));
+    orbX[i] = ORBIT_CX + (int)lroundf(sinf(th) * ORBIT_RX);
+    orbY[i] = ORBIT_CY + (int)lroundf(c * ORBIT_RY);
+    orbR[i] = 9 + (int)lroundf(19 * powf(depth[i], 1.6f));
     orbOrder[i] = i;
   }
   for (int i = 1; i < ORB_N; i++)
@@ -2161,7 +2263,7 @@ void drawAeroHome() {
           float e = (x / (float)r) * (x / (float)r) + (y / (r / 4.0f + 0.5f)) * (y / (r / 4.0f + 0.5f));
           if (e < 1) blendPx(orbX[i] + x, orbY[i] + r + 1 + y, c565(0, 30, 60), (uint8_t)((1 - e) * 70 * depth[i]));
         }
-    glossOrb(orbX[i], orbY[i], r, ORB_COL[i], 0.5f + 0.5f * depth[i]);
+    blitOrb(i, orbX[i], orbY[i], r, 0.5f + 0.5f * depth[i]);
     if (r >= 13) orbGlyph(i, orbX[i], orbY[i] - r / 12, r);
   }
 
@@ -2303,10 +2405,74 @@ void drawCardAero() {
   aaTextC(F_S, "Tap your phone here", 120, 266, COL_WHITE, true);
 }
 
-// jukebox state (the eyes dance to it)
+float eyeBounce = 0;
+// ═════════════ v5: buzzer jukebox ═════════════
+// Built-in songs are ids 0..SONG_COUNT-1. Songs you add from the app are stored on the charm as ids 100..107.
+#define MY_SONGS   8
+#define MY_SONG_MAX 1500
+#define MY_CAT     CAT_COUNT
+char     mySongName[MY_SONGS][25];
+uint16_t mySongN[MY_SONGS];
+uint8_t  mySongBpm[MY_SONGS];
+bool     mySongHas[MY_SONGS];
+uint8_t *jbNotesBuf = nullptr;                 // the custom song being played, loaded from flash
+const uint8_t *jbNotes = nullptr;
+uint16_t jbCount = 0;
+uint8_t  jbBpm = 120, jbCat = 0;
+int16_t  jbSelId = 0;
+
+#pragma pack(push, 1)
+struct SongHdr { char magic[4]; uint8_t ver; uint8_t bpm; uint16_t n; char name[24]; };
+#pragma pack(pop)
+
+String mySongPath(int slot) { return String("/s/") + slot + ".sng"; }
+
+void scanMySongs() {
+  for (int i = 0; i < MY_SONGS; i++) {
+    mySongHas[i] = false;
+    if (!fsOK) continue;
+    File f = FFat.open(mySongPath(i), "r");
+    SongHdr h;
+    if (f && f.read((uint8_t *)&h, sizeof(h)) == sizeof(h) && memcmp(h.magic, "LSNG", 4) == 0 && h.n > 0 && h.n <= MY_SONG_MAX) {
+      mySongHas[i] = true; mySongN[i] = h.n; mySongBpm[i] = max((uint8_t)30, h.bpm);
+      memcpy(mySongName[i], h.name, 24); mySongName[i][24] = 0;
+    }
+    if (f) f.close();
+  }
+}
+int mySongCount() { int n = 0; for (int i = 0; i < MY_SONGS; i++) n += mySongHas[i]; return n; }
+
+bool songExists(int id) { return (id >= 0 && id < SONG_COUNT) || (id >= 100 && id < 100 + MY_SONGS && mySongHas[id - 100]); }
+const char *songName(int id) {
+  if (id >= 0 && id < SONG_COUNT) return SONGS[id].name;
+  if (id >= 100 && id < 100 + MY_SONGS && mySongHas[id - 100]) return mySongName[id - 100];
+  return "?";
+}
+int songCat(int id) { return id >= 100 ? MY_CAT : SONGS[id].cat; }
+int catCount() { return mySongCount() ? CAT_COUNT + 1 : CAT_COUNT; }
+const char *catName(int c) { return c >= CAT_COUNT ? "My songs" : SONG_CATS[c]; }
+int songsInCat(int c, int16_t *out, int maxN) {
+  int n = 0;
+  if (c >= CAT_COUNT) { for (int i = 0; i < MY_SONGS && n < maxN; i++) if (mySongHas[i]) out[n++] = 100 + i; }
+  else for (int i = 0; i < SONG_COUNT && n < maxN; i++) if (SONGS[i].cat == c) out[n++] = i;
+  return n;
+}
+// every song in category order, for flicking through them one by one
+int allSongs(int16_t *out, int maxN) {
+  int n = 0;
+  for (int c = 0; c < catCount(); c++) n += songsInCat(c, out + n, maxN - n);
+  return n;
+}
+int16_t stepSong(int16_t id, int dir) {
+  int16_t all[48];
+  int n = allSongs(all, 48), k = 0;
+  for (int i = 0; i < n; i++) if (all[i] == id) { k = i; break; }
+  return all[(k + n + dir) % n];
+}
+
 uint8_t  jbQueue[16];
-uint8_t  jbQLen = 0, jbSel = 0, jbLastMidi = 0;
-int8_t   jbSong = -1;
+uint8_t  jbQLen = 0, jbLastMidi = 0;
+int16_t  jbSong = -1;
 uint16_t jbNote = 0;
 uint32_t jbNoteEnd = 0, jbNoteOff = 0;
 bool     jbPlaying = false, jbToneOn = false;
@@ -2314,12 +2480,67 @@ uint8_t  jbRoll[20];
 uint32_t jbSelUntil = 0;
 bool     jbDirty = false;
 
+static inline unsigned midiHz(uint8_t m) { return (unsigned)(440.0f * powf(2.0f, (m - 69) / 12.0f) + 0.5f); }
+
+bool jbLoad(int id) {
+  if (id >= 0 && id < SONG_COUNT) { jbNotes = SONGS[id].notes; jbCount = SONGS[id].n; jbBpm = SONGS[id].bpm; return true; }
+  int slot = id - 100;
+  if (slot < 0 || slot >= MY_SONGS || !mySongHas[slot] || !fsOK || !jbNotesBuf) return false;
+  File f = FFat.open(mySongPath(slot), "r");
+  SongHdr h;
+  bool ok = f && f.read((uint8_t *)&h, sizeof(h)) == sizeof(h) && h.n <= MY_SONG_MAX && f.read(jbNotesBuf, h.n * 2) == h.n * 2;
+  if (f) f.close();
+  if (!ok) return false;
+  jbNotes = jbNotesBuf; jbCount = h.n; jbBpm = max((uint8_t)30, h.bpm);
+  return true;
+}
+void jbStartSong(int s) {
+  jbDirty = true;
+  if (!songExists(s) || !jbLoad(s)) { jbPlaying = false; jbSong = -1; return; }
+  jbSong = s; jbNote = 0; jbPlaying = true;
+  jbNoteEnd = millis() + 250;
+  memset(jbRoll, 0, sizeof(jbRoll));
+}
+void jbStop() {
+  jbDirty = true;
+  jbPlaying = false; jbSong = -1; jbQLen = 0;
+  if (jbToneOn) { noTone(BUZZER); jbToneOn = false; }
+}
+void jbEnqueue(int s) {
+  if (!songExists(s)) return;
+  jbDirty = true;
+  if (!jbPlaying) jbStartSong(s);
+  else if (jbQLen < sizeof(jbQueue)) jbQueue[jbQLen++] = s;
+}
+void jbSkip() {
+  if (jbToneOn) { noTone(BUZZER); jbToneOn = false; }
+  if (!jbQLen) { jbStop(); return; }
+  int s = jbQueue[0];
+  memmove(jbQueue, jbQueue + 1, --jbQLen);
+  jbStartSong(s);
+}
+void jbService() {
+  if (!jbPlaying) return;
+  uint32_t now = millis();
+  if (jbToneOn && (int32_t)(now - jbNoteOff) >= 0) { noTone(BUZZER); jbToneOn = false; }
+  if ((int32_t)(now - jbNoteEnd) < 0) return;
+  if (jbNote >= jbCount) { jbSkip(); return; }
+  uint8_t m = jbNotes[jbNote * 2], d = jbNotes[jbNote * 2 + 1];
+  jbNote++;
+  uint32_t dur = (uint32_t)max((uint8_t)1, d) * 15000UL / jbBpm;
+  jbNoteEnd = (now - jbNoteEnd > 60) ? now + dur : jbNoteEnd + dur;
+  memmove(jbRoll, jbRoll + 1, sizeof(jbRoll) - 1);
+  jbRoll[sizeof(jbRoll) - 1] = m;
+  if (m) { tone(BUZZER, midiHz(m)); jbToneOn = true; jbNoteOff = now + dur * 85 / 100; jbLastMidi = m; eyeBounce = 6; }
+}
+float jbProgress() { return (jbSong < 0 || !jbCount) ? 0 : (float)jbNote / jbCount; }
+
 // ═════════════ v5: the eyes ═════════════
 // Two glowing blue eyes. They look around, blink, follow tilt, and change expression.
 enum Expr : uint8_t { E_NEUTRAL, E_HAPPY, E_LAUGH, E_SAD, E_ANGRY, E_SURPRISED, E_SLEEPY, E_BORED, E_SUSPICIOUS, E_WINK, E_LOVE, E_DIZZY, EXPR_COUNT };
 const char *EXPR_NAMES[EXPR_COUNT] = {"neutral", "happy", "laugh", "sad", "angry", "surprised", "sleepy", "bored", "suspicious", "wink", "love", "dizzy"};
 EyeShape eyeL = {62, 74, 18, 0, 0, 0}, eyeR = {62, 74, 18, 0, 0, 0}, eyeLT = eyeL, eyeRT = eyeR;
-float    lookX = 0, lookY = 0, lookTX = 0, lookTY = 0, eyeBounce = 0, tiltBaseX = 0, tiltBaseY = 0;
+float    lookX = 0, lookY = 0, lookTX = 0, lookTY = 0, tiltBaseX = 0, tiltBaseY = 0;
 uint8_t  exprSet = E_NEUTRAL, exprShown = 255, idleExpr = E_NEUTRAL;
 bool     exprAuto = true;
 uint32_t exprUntil = 0, nextSaccade = 0, nextBlink = 0, blinkAt = 0, nextIdleExpr = 0, idleExprUntil = 0;
@@ -2493,52 +2714,6 @@ void drawEyes() {
   if (millis() < chromeUntil) topBar("//EYES", true);
 }
 
-// ═════════════ v5: buzzer jukebox ═════════════
-
-static inline unsigned midiHz(uint8_t m) { return (unsigned)(440.0f * powf(2.0f, (m - 69) / 12.0f) + 0.5f); }
-
-void jbStartSong(int s) {
-  jbDirty = true;
-  jbSong = s % SONG_COUNT; jbNote = 0; jbPlaying = true;
-  jbNoteEnd = millis() + 250;
-  memset(jbRoll, 0, sizeof(jbRoll));
-}
-void jbStop() {
-  jbDirty = true;
-  jbPlaying = false; jbSong = -1; jbQLen = 0;
-  if (jbToneOn) { noTone(BUZZER); jbToneOn = false; }
-}
-void jbEnqueue(int s) {
-  if (!jbPlaying) jbStartSong(s);
-  else if (jbQLen < sizeof(jbQueue)) jbQueue[jbQLen++] = s % SONG_COUNT;
-}
-void jbSkip() {
-  if (jbToneOn) { noTone(BUZZER); jbToneOn = false; }
-  if (!jbQLen) { jbStop(); return; }
-  int s = jbQueue[0];
-  memmove(jbQueue, jbQueue + 1, --jbQLen);
-  jbStartSong(s);
-}
-void jbService() {
-  if (!jbPlaying) return;
-  uint32_t now = millis();
-  if (jbToneOn && (int32_t)(now - jbNoteOff) >= 0) { noTone(BUZZER); jbToneOn = false; }
-  if ((int32_t)(now - jbNoteEnd) < 0) return;
-  const Song &s = SONGS[jbSong];
-  if (jbNote >= s.n) { jbSkip(); return; }
-  uint8_t m = s.notes[jbNote * 2], d = s.notes[jbNote * 2 + 1];
-  jbNote++;
-  uint32_t dur = (uint32_t)d * 15000UL / s.bpm;
-  jbNoteEnd = (now - jbNoteEnd > 60) ? now + dur : jbNoteEnd + dur;
-  memmove(jbRoll, jbRoll + 1, sizeof(jbRoll) - 1);
-  jbRoll[sizeof(jbRoll) - 1] = m;
-  if (m) { tone(BUZZER, midiHz(m)); jbToneOn = true; jbNoteOff = now + dur * 85 / 100; jbLastMidi = m; eyeBounce = 6; }
-}
-
-float jbProgress() {
-  if (jbSong < 0) return 0;
-  return (float)jbNote / SONGS[jbSong].n;
-}
 
 void noteName(uint8_t m, char *out) {
   static const char *N[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
@@ -2546,38 +2721,50 @@ void noteName(uint8_t m, char *out) {
   sprintf(out, "%s%d", N[m % 12], m / 12 - 1);
 }
 
-#define JB_ROW_Y 30
+#define JB_ROW_Y 50
 #define JB_ROW_H 17
+#define JB_ROWS  8
+// Deck jukebox: a category bar, the songs in it, and a player strip. Tap a song to queue it.
 void drawJukeDeck() {
   gfx->fillScreen(COL_VOID);
   topBar("//JUKEBOX", true);
-  for (int i = 0; i < SONG_COUNT; i++) {
-    int y = JB_ROW_Y + i * JB_ROW_H;
-    bool cur = jbPlaying && jbSong == i;
+  int16_t ids[JB_ROWS];
+  if (jbCat >= catCount()) jbCat = 0;
+  int n = songsInCat(jbCat, ids, JB_ROWS);
+  hudPanel(10, 27, 220, 19, ACC, 1);
+  String cn = catName(jbCat); cn.toUpperCase();
+  textCentered(cn, 33, 1, COL_WHITE);
+  textAt("<", 18, 33, 1, ACC); textAt(">", 216, 33, 1, ACC);
+  for (int i = 0; i < n; i++) {
+    int id = ids[i], y = JB_ROW_Y + i * JB_ROW_H;
+    bool cur = jbPlaying && jbSong == id;
     int qpos = -1;
-    for (int k = 0; k < jbQLen; k++) if (jbQueue[k] == i) { qpos = k; break; }
+    for (int k = 0; k < jbQLen; k++) if (jbQueue[k] == id) { qpos = k; break; }
     if (cur) gfx->fillRect(14, y, 212, JB_ROW_H - 2, mix565(ACC, COL_BLACK, 170));
+    String nm = songName(id); nm.toUpperCase();
     char b[40];
-    String nm = SONGS[i].name; nm.toUpperCase();
     snprintf(b, sizeof(b), "%02d %s", i + 1, nm.substring(0, 28).c_str());
     textAt(b, 20, y + 4, 1, cur ? COL_WHITE : (qpos >= 0 ? ACC : mix565(COL_WHITE, COL_BLACK, 70)));
     if (cur) textAt(">", 212, y + 4, 1, ACC);
     else if (qpos >= 0) { snprintf(b, sizeof(b), "Q%d", qpos + 1); textAt(b, 208, y + 4, 1, ACC); }
   }
-  int py = JB_ROW_Y + SONG_COUNT * JB_ROW_H + 4;
-  hudPanel(10, py, 220, 254 - py, ACC, 1);
+  const int py = 192;
+  hudPanel(10, py, 220, 58, ACC, 1);
   char nn[6];
   noteName(jbPlaying ? jbLastMidi : 0, nn);
   textAt(nn, 20, py + 10, 3, jbToneOn ? COL_WHITE : ACC_DIM);
   for (int i = 0; i < 20; i++) {
     uint8_t m = jbRoll[i];
     if (!m) continue;
-    int h = constrain((m - 60) * 2, 2, 34);
-    gfx->fillRect(100 + i * 6, py + 40 - h, 4, h, i == 19 && jbToneOn ? COL_WHITE : ACC);
+    int h = constrain((m - 60) * 2, 2, 30);
+    gfx->fillRect(100 + i * 6, py + 36 - h, 4, h, i == 19 && jbToneOn ? COL_WHITE : ACC);
   }
-  gfx->fillRect(20, py + 46, 200, 2, ACC_LOW);
-  gfx->fillRect(20, py + 46, (int)(200 * jbProgress()), 2, COL_WHITE);
-  textAt(jbPlaying ? (String("PLAYING  +") + (int)jbQLen + " QUEUED") : String("TAP A SONG TO QUEUE IT"), 20, py + 52, 1, COL_WHITE);
+  gfx->fillRect(20, py + 42, 200, 2, ACC_LOW);
+  gfx->fillRect(20, py + 42, (int)(200 * jbProgress()), 2, COL_WHITE);
+  if (jbPlaying) {
+    textAt(String("+") + (int)jbQLen + " QUEUED", 20, py + 48, 1, COL_WHITE);
+    textAt("STOP", 132, py + 48, 1, ACC); textAt("SKIP >", 184, py + 48, 1, ACC);
+  } else textAt("TAP A SONG TO PLAY OR QUEUE", 20, py + 48, 1, COL_WHITE);
 }
 
 // spinning disc made of rainbow light
@@ -2607,20 +2794,21 @@ void drawJukeAero() {
   aeroTopBar(true);
   static float spin = 0;
   if (jbPlaying) spin += 0.09f;
-  drawDisc(120, 92, 56, spin);
-  int show = (jbPlaying && millis() > jbSelUntil) ? jbSong : jbSel;
-  const char *nm = SONGS[show].name;
-  glassPanel(16, 156, 208, 34, 17, 0.72f, 0.45f);
-  aaTextC(F_M, aaClip(F_M, nm, 168).c_str(), 120, 179, AERO_INK);
-  aaTextS(F_M, "<", 22, 179, ACC); aaText(F_M, ">", 208, 179, ACC);
-  if (jbPlaying) aeroProgress(30, 194, 180, 9, jbProgress(), ACC);
-  glassPanel(20, 208, 200, 58, 18, 0.5f, 0.28f);
+  drawDisc(120, 90, 54, spin);
+  int show = (jbPlaying && millis() > jbSelUntil) ? jbSong : jbSelId;
+  if (!songExists(show)) show = jbSelId = 0;
+  glassPanel(16, 152, 208, 42, 18, 0.72f, 0.45f);
+  aaTextC(F_S, catName(songCat(show)), 120, 168, mix565(ACC, COL_BLACK, 80));
+  aaTextC(F_M, aaClip(F_M, songName(show), 168).c_str(), 120, 188, AERO_INK);
+  aaTextS(F_M, "<", 22, 182, ACC); aaText(F_M, ">", 208, 182, ACC);
+  if (jbPlaying) aeroProgress(30, 197, 180, 9, jbProgress(), ACC);
+  glassPanel(20, 210, 200, 56, 18, 0.5f, 0.28f);
   if (jbQLen) {
-    aaText(F_S, "Up next", 34, 226, mix565(ACC, COL_BLACK, 80));
-    for (int k = 0; k < min(2, (int)jbQLen); k++) aaText(F_S, aaClip(F_S, SONGS[jbQueue[k]].name, 170).c_str(), 34, 243 + k * 15, AERO_INK);
+    aaText(F_S, "Up next", 34, 227, mix565(ACC, COL_BLACK, 80));
+    for (int k = 0; k < min(2, (int)jbQLen); k++) aaText(F_S, aaClip(F_S, songName(jbQueue[k]), 170).c_str(), 34, 244 + k * 15, AERO_INK);
   } else {
-    aaTextC(F_S, jbPlaying ? "Tap here to queue the" : "Tap the disc to play,", 120, 232, AERO_INK);
-    aaTextC(F_S, jbPlaying ? "song shown above" : "or here to queue it", 120, 250, AERO_INK);
+    aaTextC(F_S, jbPlaying ? "Tap here to queue the" : "Tap the disc to play,", 120, 233, AERO_INK);
+    aaTextC(F_S, jbPlaying ? "song shown above" : "or here to queue it", 120, 251, AERO_INK);
   }
 }
 
@@ -2931,12 +3119,13 @@ void sendClipList() {
 void xferCleanup() {
   if (xferFile) xferFile.close();
   if (xferKind == 2 && fsOK) FFat.remove("/c/tmp.part");
+  if (xferKind == 4 && fsOK) FFat.remove("/s/tmp.part");
   xferActive = false;
   xferBufLen = 0;
 }
 
 void xferFlush() {
-  if (xferKind == 2 && xferFile && xferBufLen) { xferFile.write(xferBuf, xferBufLen); xferBufLen = 0; }
+  if ((xferKind == 2 || xferKind == 4) && xferFile && xferBufLen) { xferFile.write(xferBuf, xferBufLen); xferBufLen = 0; }
 }
 
 // decodes the album-cover JPEG straight into its own full-screen buffer
@@ -2965,6 +3154,14 @@ void xferBegin(const uint8_t *p, uint16_t len) {
   const char *why = "bad";
   if (xferKind == 0)      { ok = photoBuf && xferSize == FB_BYTES; if (ok) photoLoaded = false; }
   else if (xferKind == 3) { ok = artBuf && artJpg && xferSize > 100 && xferSize <= ART_JPG_MAX; }
+  else if (xferKind == 4) {                        // a song: written to /s/<slot>.sng
+    int slot = -1;
+    for (int i = 0; i < MY_SONGS; i++) if (!mySongHas[i]) { slot = i; break; }
+    if (!fsOK) why = "nofs";
+    else if (slot < 0) why = "full";
+    else if (xferSize <= sizeof(SongHdr) || xferSize > sizeof(SongHdr) + MY_SONG_MAX * 2) why = "bad";
+    else { xferId = slot; FFat.remove("/s/tmp.part"); xferFile = FFat.open("/s/tmp.part", "w"); ok = (bool)xferFile && xferBuf; if (!ok) why = "open"; }
+  }
   else if (xferKind == 2) {
     if (!fsOK) why = "nofs";
     else if (xferId == 0 || xferSize <= sizeof(ClipHdr)) why = "bad";
@@ -2986,6 +3183,7 @@ void xferData(const uint8_t *p, uint16_t len) {
   uint32_t take = min<uint32_t>(len, xferSize - xferGot);
   if (xferKind == 0)      memcpy((uint8_t *)photoBuf + xferGot, p, take);
   else if (xferKind == 3) memcpy(artJpg + xferGot, p, take);
+  else if (xferKind == 4) { memcpy(xferBuf + xferBufLen, p, take); xferBufLen += take; if (xferBufLen > XBUF_SZ - 520) xferFlush(); }
   else {
     uint32_t off = 0;
     while (off < take) {
@@ -3015,6 +3213,20 @@ void xferEnd() {
     }
     artLoaded = ok;
     if (!ok) { sendStatus("xfer=err;why=format"); return; }
+  } else if (xferKind == 4) {
+    xferFlush();
+    xferFile.close();
+    File f = FFat.open("/s/tmp.part", "r");
+    SongHdr h;
+    bool ok = f && f.read((uint8_t *)&h, sizeof(h)) == sizeof(h) && memcmp(h.magic, "LSNG", 4) == 0 && h.n > 0 && h.n <= MY_SONG_MAX && f.size() >= sizeof(h) + h.n * 2;
+    if (f) f.close();
+    if (!ok) { xferCleanup(); sendStatus("xfer=err;why=format"); return; }
+    FFat.remove(mySongPath(xferId));
+    FFat.rename("/s/tmp.part", mySongPath(xferId));
+    xferActive = false;
+    scanMySongs();
+    jbCat = MY_CAT; jbSelId = 100 + xferId;
+    toast(skin ? "Song added" : "song added", 1200);
   } else {
     xferFlush();
     xferFile.close();
@@ -3211,6 +3423,24 @@ void handlePacket(const uint8_t *d, uint16_t n) {
       }
       break;
 
+    case CMD_SONG_LIST:
+      for (int i = 0; i < MY_SONGS; i++) if (mySongHas[i]) {
+        char b[64]; snprintf(b, sizeof(b), "song=%d,%u,%s", 100 + i, mySongN[i], mySongName[i]); notifyText(b); delay(20);
+      }
+      sendStatus("songs=end");
+      break;
+
+    case CMD_SONG_DELETE:
+      if (len >= 1 && p[0] >= 100 && p[0] < 100 + MY_SONGS && fsOK) {
+        if (jbSong == p[0]) jbStop();
+        FFat.remove(mySongPath(p[0] - 100));
+        scanMySongs();
+        if (jbCat >= catCount()) jbCat = 0;
+        if (!songExists(jbSelId)) jbSelId = 0;
+      }
+      sendStatus("songs=changed");
+      break;
+
     case CMD_PING:      sendStatus(); break;
     case CMD_BUZZ:      beep(len >= 1 ? constrain((int)p[0], 1, 10) : 3); break;
     case CMD_CLIP_LIST: sendClipList(); break;
@@ -3332,7 +3562,7 @@ void cycleAero(int dir) {
 void setSkin(uint8_t s) {
   skin = s % 2;
   prefs.putUChar("skin", skin);
-  if (skin == SKIN_AERO) { orbitFocus(max(0, orbOfMode(mode)), true); buildAeroBg(); }
+  if (skin == SKIN_AERO) { orbitFocus(max(0, orbOfMode(mode)), true); buildOrbSprites(); buildHomeBase(); }
   glitchFrames = skin == SKIN_DECK ? 5 : 0;
   snapAccent();
   toast(skin == SKIN_AERO ? "Aero" : "Deck", 900);
@@ -3385,8 +3615,8 @@ void onSwipe(int dir) {
       break;
     }
     case M_JUKE:
-      if (skin == SKIN_AERO) { jbSel = (jbSel + SONG_COUNT + dir) % SONG_COUNT; jbSelUntil = millis() + 4000; sfx(0); }
-      else if (jbPlaying) { jbSkip(); toast("skip", 600); }
+      if (skin == SKIN_AERO) { jbSelId = stepSong((jbPlaying && millis() > jbSelUntil) ? jbSong : jbSelId, dir); jbSelUntil = millis() + 4000; sfx(0); }
+      else { jbCat = (jbCat + catCount() + dir) % catCount(); sfx(1); }
       break;
     case M_TORCH: torchCol = (torchCol + 4 + dir) % 4; break;
     default: break;
@@ -3457,13 +3687,17 @@ void onTap(bool dbl) {
       break;
     case M_JUKE:
       if (skin == SKIN_AERO) {
-        if (tch.y0 < 150) { if (jbPlaying) jbStop(); else jbStartSong(jbSel); }
-        else if (tch.y0 > 200) { bool was = jbPlaying; jbEnqueue(jbSel); toast(was ? "Added to the queue" : "Playing", 800); }
+        int show = (jbPlaying && millis() > jbSelUntil) ? jbSong : jbSelId;
+        if (tch.y0 < 148) { if (jbPlaying) jbStop(); else jbStartSong(jbSelId); }
+        else if (tch.y0 < 200) { if (tch.x0 < 60) { jbSelId = stepSong(show, -1); jbSelUntil = millis() + 4000; } else if (tch.x0 > 180) { jbSelId = stepSong(show, 1); jbSelUntil = millis() + 4000; } }
+        else { bool was = jbPlaying; jbEnqueue(jbSelId); toast(was ? "Added to the queue" : "Playing", 800); }
       } else {
-        int row = (tch.y0 - JB_ROW_Y) / JB_ROW_H;
-        if (tch.y0 >= JB_ROW_Y && row < SONG_COUNT) { bool was = jbPlaying; jbSel = row; jbEnqueue(row); toast(was ? "queued" : "playing", 700); }
-        else if (jbPlaying) jbStop();
-        else jbStartSong(jbSel);
+        int16_t ids[JB_ROWS];
+        int n = songsInCat(jbCat, ids, JB_ROWS), row = (tch.y0 - JB_ROW_Y) / JB_ROW_H;
+        if (tch.y0 < JB_ROW_Y - 2) { jbCat = (jbCat + catCount() + (tch.x0 < 120 ? -1 : 1)) % catCount(); }
+        else if (tch.y0 < 190 && row >= 0 && row < n) { bool was = jbPlaying; jbSelId = ids[row]; jbEnqueue(ids[row]); toast(was ? "queued" : "playing", 700); }
+        else if (tch.y0 >= 190 && jbPlaying) { if (tch.x0 > 170) jbSkip(); else jbStop(); }
+        else if (tch.y0 >= 190) jbStartSong(jbSelId);
       }
       break;
     case M_TORCH: torchCol = (torchCol + 1) % 4; chromeUntil = 0; break;
@@ -3493,7 +3727,7 @@ void onShake() {
       marqueeX = SCR_W; typeStart = millis();
       break;
     case M_EYES: setExpr(E_DIZZY, 3000); sfx(3); break;
-    case M_JUKE: jbSel = random(0, SONG_COUNT); jbStop(); jbStartSong(jbSel); toast(skin == SKIN_AERO ? "Shuffle" : "shuffle", 800); break;
+    case M_JUKE: { int16_t all[48]; int n = allSongs(all, 48); jbSelId = all[random(0, n)]; jbStop(); jbStartSong(jbSelId); toast(skin == SKIN_AERO ? "Shuffle" : "shuffle", 800); break; }
     default: break;
   }
 }
@@ -3521,9 +3755,16 @@ void handleTouch() {
     int dx = x - tch.x0, dy = y - tch.y0;
     // Aero home: sideways drags spin the orbit, live under the finger
     if (mode == M_DECK && skin == SKIN_AERO && !tch.consumed && !orbitDrag && abs(dx) > 8 && abs(dx) > abs(dy)) {
-      orbitDrag = true; orbitGoalOn = false; tch.consumed = true; orbitLastX = tch.x0;
+      orbitDrag = true; orbitGoalOn = false; tch.consumed = true; orbitLastX = tch.x0; orbitLastT = now; orbitFlick = 0; orbitV = 0;
     }
-    if (orbitDrag) { float d = (x - orbitLastX) * 0.012f; orbitA += d; orbitV = d; orbitLastX = x; return; }
+    if (orbitDrag) {
+      float d = (x - orbitLastX) * 0.012f;
+      orbitA += d;
+      uint32_t ms = now - orbitLastT;
+      if (x != orbitLastX && ms) { orbitFlick = orbitFlick * 0.4f + 0.6f * (d * 33.3f / ms); orbitLastT = now; }
+      orbitLastX = x;
+      return;
+    }
     if (tch.consumed) return;
     if (abs(dx) >= SWIPE_PX && abs(dx) > abs(dy)) { tch.consumed = true; onSwipe(dx < 0 ? 1 : -1); return; }
     if (abs(dy) >= SWIPE_PX && abs(dy) > abs(dx)) { tch.consumed = true; onVSwipe(dy < 0 ? 1 : -1); return; }
@@ -3536,7 +3777,11 @@ void handleTouch() {
   } else if (tch.down) {
     tch.down = false;
     lastTouchUp = now;
-    if (orbitDrag) { orbitDrag = false; return; }
+    if (orbitDrag) {                           // let go: keep spinning with the finger's speed, unless it stopped first
+      orbitDrag = false;
+      orbitV = (now - orbitLastT > 90) ? 0 : constrain(orbitFlick, -0.45f, 0.45f);
+      return;
+    }
     if (tch.consumed) return;
     int dx = tch.x - tch.x0, dy = tch.y - tch.y0;
     uint32_t dt = now - tch.t0;
@@ -3595,26 +3840,36 @@ int voltsToPct(float v) {
 
 void updateBattery() {
   uint32_t now = millis();
-  if (lastBatRead && now - lastBatRead < 5000) return;
+  if (lastBatRead && now - lastBatRead < 1000) return;
   lastBatRead = now;
   uint32_t mv = 0;
   for (int i = 0; i < 16; i++) mv += analogReadMilliVolts(BAT_ADC);
   float v = (mv / 16) * 3.0f / 1000.0f;
-  batVolts = (vHistN == 0) ? v : batVolts * 0.7f + v * 0.3f;
+  vFast = (vHistN == 0) ? v : vFast * 0.5f + v * 0.5f;
+  batVolts = (vHistN == 0) ? v : batVolts * 0.85f + v * 0.15f;
 
-  // 60 s history to spot a rising voltage (charging from a wall adapter)
-  float oldest = vHist[vHistN % 12];
-  bool rising = vHistN >= 12 && (batVolts - oldest) > 0.012f;
-  vHist[vHistN % 12] = batVolts;
+  // The board has no "charger connected" pin. USB power shows up two ways:
+  //  - a computer: the USB port reports a host straight away
+  //  - a plain charger: the battery voltage jumps up ~0.1 V within a few seconds of plugging in, and drops the same way when unplugged
+  // Anything else is just the battery, so nothing slow or guessed counts as charging any more.
+  float lo = vFast, hi = vFast;
+  for (int i = 0; i < min(vHistN, 6); i++) { lo = min(lo, vHist[i]); hi = max(hi, vHist[i]); }
+  if (vHistN >= 3 && !wallPower && vFast - lo > 0.07f) { wallPower = true; batVolts = vFast; }
+  else if (wallPower && hi - vFast > 0.07f) { wallPower = false; batVolts = vFast; }
+  vHist[vHistN % 6] = vFast;
   vHistN++;
+  if (now - lastSlowAt >= 10000) {                 // a charger never lets the voltage sag for a whole minute
+    lastSlowAt = now;
+    vSlow[vSlowN % 6] = vFast; vSlowN++;
+    if (wallPower && vSlowN >= 6 && vSlow[(vSlowN - 6) % 6] - vFast > 0.03f) wallPower = false;
+  }
 
-  bool usb = Serial.isPlugged();          // connected to a computer
-  if (usb || rising || batVolts > 4.23f) chargeSeenAt = now;
+  bool usb = Serial.isPlugged();
   bool wasCharging = charging;
-  charging = chargeSeenAt && (now - chargeSeenAt < 90000);
+  charging = usb || wallPower;
 
   // the charger lifts the voltage, so read a little lower while charging
-  int pct = voltsToPct(charging ? batVolts - 0.08f : batVolts);
+  int pct = voltsToPct(charging ? batVolts - 0.10f : batVolts);
   batPct = constrain(pct, 0, 100);
 
   // plugged in: show the charging screen. Unplugged: go back to what was open.
@@ -3730,6 +3985,8 @@ void setup() {
   prevFb   = (uint16_t *)ps_malloc(FB_BYTES);
   frameBuf = (uint8_t *)ps_malloc(FRAME_MAX);
   aeroBg   = (uint16_t *)ps_malloc(FB_BYTES);
+  homeBase = (uint16_t *)ps_malloc(FB_BYTES);
+  jbNotesBuf = (uint8_t *)ps_malloc(MY_SONG_MAX * 2);
   initAeroBubbles();
   bootLine("memory", (photoBuf && artBuf && artJpg && prevFb && frameBuf) ? "PSRAM ok" : "low", photoBuf && artBuf && artJpg && prevFb && frameBuf);
   xferBuf  = (uint8_t *)malloc(XBUF_SZ);
@@ -3739,12 +3996,15 @@ void setup() {
   if (!fsOK) Serial.println("FFat mount failed - check Partition Scheme (16M Flash 3MB APP/9.9MB FATFS)");
   if (fsOK) {
     if (!FFat.exists("/c")) FFat.mkdir("/c");
+    if (!FFat.exists("/s")) FFat.mkdir("/s");
+    FFat.remove("/s/tmp.part");
     FFat.remove("/c/tmp.part");
     File f = FFat.open("/photo.bin", "r");
     if (f && photoBuf && f.size() == FB_BYTES) { f.read((uint8_t *)photoBuf, FB_BYTES); photoLoaded = true; }
     if (f) f.close();
     if (!openClip(clipId)) openNextClip(0);
   }
+  scanMySongs();
   bootLine("storage", fsOK ? "FFat ok" : "not mounted", fsOK);
 
   time_t e;
@@ -3761,7 +4021,8 @@ void setup() {
   bootLine("power", pw, batPct > 15);
 
   if (skin) {
-    buildAeroBg();
+    buildOrbSprites();
+    buildHomeBase();
     aeroBackdrop();
     glossOrb(120, 104, 44, ACC);
     aaTextC(F_L, "Larp Charm", 120, 190, COL_WHITE, true);
@@ -3835,6 +4096,7 @@ void loop() {
   }
 
   uint32_t interval = (xferActive && xferKind != 3) ? 150 : 33;
+  if (mode == M_DECK && skin && orbitMoving()) interval = 15;      // spin as smoothly as the screen allows
   if (millis() - lastFrame >= interval) {
     lastFrame = millis();
     render();

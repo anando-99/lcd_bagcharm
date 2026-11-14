@@ -467,8 +467,8 @@
     if (cg) { ['#e6e6f0', '#ffc8f0', '#c8e6ff', '#fff6c8', '#e6e6f0', '#d2c8ff', '#c8fff0', '#e6e6f0'].forEach((col, i, a) => cg.addColorStop(i / (a.length - 1), col)); c.fillStyle = cg; } else c.fillStyle = '#ddd';
     c.beginPath(); c.arc(0, 0, 56, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,.08)'; for (let r = 26; r < 56; r += 3) { c.beginPath(); c.arc(0, 0, r, 0, 7); c.stroke(); } c.restore();
     orb(120, 92, 20, ACC); c.fillStyle = '#1e283c'; c.beginPath(); c.arc(120, 92, 5, 0, 7); c.fill();
-    const nm = (window.SONGS || [])[idx] ? window.SONGS[idx].name : 'Jingle Bells';
-    glass(16, 156, 208, 34, 17, 0.72, 0.45); NT(nm, 120, 179, 19, INK, 'center'); NT('<', 22, 179, 19, ACC, 'left', true); NT('>', 208, 179, 19, ACC);
+    const sg = (window.SONGS || [])[idx], nm = sg ? sg.name : 'My song', cn = sg ? (window.SONG_CATS || [])[sg.cat] : 'My songs';
+    glass(16, 152, 208, 42, 18, 0.72, 0.45); NT(cn, 120, 168, 14, shade(ACC, -0.3), 'center', false, 700); NT(nm, 120, 188, 19, INK, 'center'); NT('<', 22, 182, 19, ACC, 'left', true); NT('>', 208, 182, 19, ACC);
     glass(20, 208, 200, 58, 18, 0.5, 0.28);
     if (ui.jbQueue) { NT('Up next', 34, 226, 14, shade(ACC, -0.3), 'left', false, 700); NT(ui.jbQueue + ' more ' + (ui.jbQueue > 1 ? 'songs' : 'song'), 34, 243, 14, INK, 'left', false, 700); }
     else { NT(playing ? 'Tap here to queue the' : 'Tap the disc to play,', 120, 232, 14, INK, 'center', false, 700); NT(playing ? 'song shown above' : 'or here to queue it', 120, 250, 14, INK, 'center', false, 700); }
@@ -520,10 +520,12 @@
   function jukeDeck() {
     R(0, 0, W, H, VOID); topBar('//JUKEBOX', true);
     const playing = ui.jbSong >= 0 ? ui.jbSong : (window.previewNotes ? window.previewNotes.song : -1);
-    (window.SONGS || []).forEach((sg, i) => { const y = 30 + i * 17; if (i === playing) R(14, y, 212, 15, mixk(ACC, .33)); T(String(i + 1).padStart(2, '0') + ' ' + sg.name.toUpperCase().slice(0, 28), 20, y + 4, 1, i === playing ? '#fff' : '#b9b9c0'); if (i === playing) T('>', 212, y + 4, 1, ACC); });
-    const py = 204; hudPanel(10, py, 220, 50, ACC, .5); T(playing >= 0 ? 'E5' : '--', 20, py + 10, 3, playing >= 0 ? '#fff' : mixk(ACC, .45));
-    if (playing >= 0) for (let i = 0; i < 20; i++) { const h = 4 + Math.abs(Math.sin(i * 1.7 + frame * 0.2)) * 28; R(100 + i * 6, py + 40 - h, 4, h, ACC); }
-    T(playing >= 0 ? 'PLAYING  +' + ui.jbQueue + ' QUEUED' : 'TAP A SONG TO QUEUE IT', 20, py + 52, 1, '#fff');
+    const cat = +(localStorage.getItem('o_songcat') || 0), cats = window.SONG_CATS || [];
+    hudPanel(10, 27, 220, 19, ACC, .5); TC((cats[cat] || '').toUpperCase(), 33, 1, '#fff'); T('<', 18, 33, 1, ACC); T('>', 216, 33, 1, ACC);
+    (window.SONGS || []).map((sg, i) => [sg, i]).filter(([sg]) => sg.cat === cat).forEach(([sg, i], k) => { const y = 50 + k * 17; if (i === playing) R(14, y, 212, 15, mixk(ACC, .33)); T(String(k + 1).padStart(2, '0') + ' ' + sg.name.toUpperCase().slice(0, 28), 20, y + 4, 1, i === playing ? '#fff' : '#b9b9c0'); if (i === playing) T('>', 212, y + 4, 1, ACC); });
+    const py = 192; hudPanel(10, py, 220, 58, ACC, .5); T(playing >= 0 ? 'E5' : '--', 20, py + 10, 3, playing >= 0 ? '#fff' : mixk(ACC, .45));
+    if (playing >= 0) for (let i = 0; i < 20; i++) { const h = 4 + Math.abs(Math.sin(i * 1.7 + frame * 0.2)) * 26; R(100 + i * 6, py + 36 - h, 4, h, ACC); }
+    if (playing >= 0) { T('+' + ui.jbQueue + ' QUEUED', 20, py + 48, 1, '#fff'); T('STOP', 132, py + 48, 1, ACC); T('SKIP >', 184, py + 48, 1, ACC); } else T('TAP A SONG TO PLAY OR QUEUE', 20, py + 48, 1, '#fff');
   }
   function torch() { R(0, 0, W, H, ['#ffffff', '#ffce96', '#ff0000', '#78e6ff'][ui.torch || 0]); }
   function chargeDeck() {
