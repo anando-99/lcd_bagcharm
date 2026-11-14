@@ -77,7 +77,7 @@ struct OrbSprite { uint16_t *px; uint8_t *a; };
 #define SVC_UUID    "6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee"
 #define RX_UUID     "6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee"
 #define STATUS_UUID "6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee"
-#define FW_VERSION  "5.1"
+#define FW_VERSION  "6.0"
 #define DEVICE_NAME "Larp Charm"
 
 enum Cmd : uint8_t {
@@ -166,6 +166,8 @@ Preferences prefs;
 
 uint8_t  mode = M_DECK;
 uint8_t  theme = 0;
+#define SKIN_QUEST 2
+#define SKIN_COUNT 3
 uint8_t  skin = 0, aeroVar = 0;                       // look: 0 deck, 1 aero
 bool     eyesIdle = false, tiltSpin = true, idleEyesOn = false;
 uint8_t  idleReturn = 8;
@@ -372,7 +374,7 @@ void loadPrefs() {
     prefs.putUChar("mode", mode); prefs.putUChar("bg", bgStyle); prefs.putUChar("flags", fl);
   }
   soundsOn = fl & 1; shakeWake = fl & 2; hourChime = fl & 4; fxOn = fl & 8; eyesIdle = fl & 16; tiltSpin = fl & 32;
-  skin       = prefs.getUChar("skin", 0) % 2;
+  skin       = prefs.getUChar("skin", 0) % SKIN_COUNT;
   aeroVar    = prefs.getUChar("avar", 0) % 3;
   stepsToday = stepsSaved = prefs.getULong("steps", 0);
   stepDay    = prefs.getShort("sday", -1);
@@ -605,7 +607,7 @@ void shadeRows(int y0, int y1, int k0, int k1) {
 
 // The accent colour follows the theme, and takes the album's colour while music plays.
 void accentTarget(uint8_t &r, uint8_t &g, uint8_t &b) {
-  uint16_t t = skin ? AERO_ACC_C[aeroVar % 3] : THEMES[theme % THEME_COUNT];
+  uint16_t t = skin == SKIN_QUEST ? c565(250, 210, 90) : skin ? AERO_ACC_C[aeroVar % 3] : THEMES[theme % THEME_COUNT];
   r = r8(t); g = g8(t); b = b8(t);
   if (npPlaying && npTitle.length() && millis() > themePreviewUntil) {
     int nr = r8(npColor), ng = g8(npColor), nb = b8(npColor), mx = max(nr, max(ng, nb));
@@ -696,7 +698,9 @@ void drawBatteryCells(int x, int y) {
 
 // The status line every screen shares: name, time or timer, link bars, battery.
 void aeroTopBar(bool showTime);
+void questTopBar(bool showTime);
 void topBar(const char *label, bool showTime) {
+  if (skin == SKIN_QUEST) { questTopBar(showTime); return; }
   if (skin) { aeroTopBar(showTime); return; }
   dimRect(0, 0, SCR_W, 23, 1);
   textAt(label, 34, 9, 1, ACC);
@@ -719,8 +723,10 @@ void topBar(const char *label, bool showTime) {
 }
 
 void aeroToast();
+void questToast();
 void drawToast() {
   if (millis() > toastUntil) return;
+  if (skin == SKIN_QUEST) { questToast(); return; }
   if (skin) { aeroToast(); return; }
   String m = toastMsg; m.toUpperCase();
   int w = m.length() * 12 + 20, x = (SCR_W - w) / 2;
@@ -730,9 +736,11 @@ void drawToast() {
 }
 
 void aeroOverlayPanel(const char *big, const char *small, float frac);
+void questOverlay(const char *big, const char *small, float frac);
 void drawTransferOverlay() {
   if (!xferActive || xferSize == 0 || xferKind == 3) return;      // album art arrives quietly
   int pct = (int)(100ULL * xferGot / xferSize);
+  if (skin == SKIN_QUEST) { questOverlay("Receiving", nullptr, pct / 100.0f); return; }
   if (skin) { aeroOverlayPanel("Receiving", nullptr, pct / 100.0f); return; }
   gfx->fillRect(30, 112, 180, 56, COL_BLACK);
   hudPanel(30, 112, 180, 56, ACC, 0);
@@ -742,7 +750,9 @@ void drawTransferOverlay() {
 
 // what a screen shows when it has nothing to show yet
 void aeroBackdrop(const uint16_t *base = nullptr);
+void questEmpty(const char *big, const char *l1, const char *l2);
 void emptyState(const char *label, const char *big, const char *l1, const char *l2) {
+  if (skin == SKIN_QUEST) { questEmpty(big, l1, l2); return; }
   if (skin) {
     aeroBackdrop();
     topBar(label, true);
@@ -1578,7 +1588,9 @@ void clockHand(float ang, int len, uint16_t c, int thick) {
 }
 
 void drawClockAero();
+void drawClockQuest();
 void drawClock() {
+  if (skin == SKIN_QUEST) { drawClockQuest(); return; }
   if (skin) { drawClockAero(); return; }
   drawBackground();
   topBar("//CHRONO", false);
@@ -1739,7 +1751,9 @@ void mediaCmd(uint8_t kind) {
 }
 
 void drawMusicAero();
+void drawMusicQuest();
 void drawMusic() {
+  if (skin == SKIN_QUEST) { drawMusicQuest(); return; }
   if (skin) { drawMusicAero(); return; }
   if (artLoaded && artBuf && FB) {
     memcpy(FB, artBuf, FB_BYTES);
@@ -1803,7 +1817,9 @@ void drawMusic() {
   }
 }
 
+void drawPetQuest();
 void drawPet() {
+  if (skin == SKIN_QUEST) { drawPetQuest(); return; }
   if (skin) {
     aeroBackdrop();
     topBar("//DAEMON", true);
@@ -1847,7 +1863,9 @@ void drawPet() {
 }
 
 void drawCardAero();
+void drawCardQuest();
 void drawCard() {
+  if (skin == SKIN_QUEST) { drawCardQuest(); return; }
   if (skin) { drawCardAero(); return; }
   const uint16_t a = cardAccent;
   gfx->fillScreen(COL_VOID);
@@ -1911,7 +1929,9 @@ void drawDie(int x, int y, int s, uint8_t v) {
     if ((P[v] >> (8 - i)) & 1) gfx->fillRect(x + s / 4 * (1 + i % 3) - s / 11, y + s / 4 * (1 + i / 3) - s / 11, 2 * (s / 11), 2 * (s / 11), COL_BLACK);
 }
 
+void drawToyQuest();
 void drawToy() {
+  if (skin == SKIN_QUEST) { drawToyQuest(); return; }
   static const char *TN[3] = {"< ORACLE >", "< DICE >", "< COIN >"};
   uint32_t el = millis() - toyRollAt;
   bool rolling = toyRollAt && el < 1100;
@@ -1976,8 +1996,10 @@ void drawToy() {
   } else textPop(TN[toyKind % 3], 30, 2, ACC);
 }
 
+void drawAlarmQuest();
 void drawAlarm() {
   if (!alarmUntil) return;
+  if (skin == SKIN_QUEST) { drawAlarmQuest(); return; }
   if (skin) {
     glassPanel(20, 92, 200, 96, 26, (millis() / 300) % 2 ? 0.9f : 0.6f, 0.45f);
     aaTextC(F_L, "Time's up!", 120, 136, AERO_INK);
@@ -1994,6 +2016,7 @@ void drawAlarm() {
 // a line across the bottom of the other screens while a song is playing
 void drawTicker() {
   if (!npPlaying || !npTitle.length()) return;
+  if (skin == SKIN_QUEST) return;
   if (skin) {
     if (mode != M_CLOCK) return;
     String s = asciiOnly(npTitle);
@@ -2675,7 +2698,7 @@ void drawHeart(float cx, float cy, float s, uint16_t col) {
 
 void drawEyes() {
   eyesThink();
-  if (skin == SKIN_AERO) verticalGradient(c565(0, 14, 40), COL_BLACK);
+  if (skin != SKIN_DECK) verticalGradient(c565(0, 14, 40), COL_BLACK);
   else {
     gfx->fillScreen(COL_BLACK);
     for (int y = 10; y < SCR_H; y += 20) for (int x = 10; x < SCR_W; x += 20) gfx->drawPixel(x, y, c565(0, 26, 52));
@@ -2707,7 +2730,7 @@ void drawEyes() {
     for (int i = 0; i < 3; i++) {
       float p = fmodf(t * 0.5f + i / 3.0f, 1.0f);
       int zx = 190 + (int)(p * 26), zy = 92 - (int)(p * 50);
-      if (skin == SKIN_AERO) aaText(F_M, "z", zx, zy, c565(120, 200, 255), (uint8_t)(255 * (1 - p)));
+      if (skin != SKIN_DECK) aaText(F_M, "z", zx, zy, c565(120, 200, 255), (uint8_t)(255 * (1 - p)));
       else textAt("z", zx, zy, 1 + i % 2, mix565(c565(0, 140, 255), COL_BLACK, (uint8_t)(p * 255)));
     }
   }
@@ -2812,7 +2835,8 @@ void drawJukeAero() {
   }
 }
 
-void drawJuke() { if (skin == SKIN_AERO) drawJukeAero(); else drawJukeDeck(); }
+void drawJukeQuest();
+void drawJuke() { if (skin == SKIN_QUEST) drawJukeQuest(); else if (skin == SKIN_AERO) drawJukeAero(); else drawJukeDeck(); }
 
 // ═════════════ v5: charging screen ═════════════
 uint8_t chargeReturn = M_DECK;
@@ -2880,7 +2904,8 @@ void drawChargeAero() {
   aaTextC(F_S, b, 120, 254, AERO_INK);
 }
 
-void drawCharge() { if (skin == SKIN_AERO) drawChargeAero(); else drawChargeDeck(); }
+void drawChargeQuest();
+void drawCharge() { if (skin == SKIN_QUEST) drawChargeQuest(); else if (skin == SKIN_AERO) drawChargeAero(); else drawChargeDeck(); }
 
 // ═════════════ v5: torch ═════════════
 const uint16_t TORCH_COL[4] = { COL_WHITE, c565(255, 206, 150), c565(255, 0, 0), c565(120, 230, 255) };
@@ -2920,6 +2945,1116 @@ void stepDayCheck() {
   if (stepsToday - stepsSaved >= 200) { stepsSaved = stepsToday; prefs.putULong("steps", stepsToday); petMood = min(100, petMood + 1); }
 }
 
+
+// ═════════════ v6: the Quest look, a little pixel-art JRPG village ═════════════
+// Everything here is drawn at half resolution: one art pixel is a 2x2 block on the screen.
+// The village loops: walk left or right to visit a landmark, tap it to go in.
+// Light follows the real time of day (dawn, day, golden hour, dusk, night).
+#include "questart.h"
+void openModule(int m);
+
+const uint8_t QLOC_MODE[QW_NLOC] = {M_CLOCK, M_MUSIC, M_JUKE, M_EYES, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CLIP, M_CARD, M_TORCH};
+const char *const QLOC_SUB[QW_NLOC] = {"Time and date", "Now playing", "Buzzer songs", "Robot eyes", "Your pet", "Oracle, dice, coin",
+                                       "Your message", "Your photo", "Your clips", "Status and NFC", "A bright light"};
+const int8_t QHERO_SX[QW_NLOC] = {36, 36, 64, 74, 42, 36, 46, 34, 32, 34, 36};   // where the hero waits, on screen
+const int8_t QDOOR[QW_NLOC][2] = {{64, 92}, {65, 93}, {78, 94}, {64, 80}, {72, 93}, {64, 88}, {41, 74}, {59, 84}, {61, 76}, {63, 86}, {68, 97}};  // the enter arrow
+
+uint8_t  *qWorld = nullptr, *qFarI = nullptr, *qHillI = nullptr, *qFgI = nullptr;
+uint16_t *qFar = nullptr, *qHill = nullptr, *qFg = nullptr;
+uint8_t  *qHillA = nullptr, *qFgA = nullptr, *qTmp = nullptr;
+uint16_t  qLut[256], qLutS[256];
+uint8_t   qRgb[256][3];
+uint16_t  qSky[140];
+uint8_t   qHor[3];
+float     qNight = 0, qDayK = 1, qHourNow = 12, qHourForce = -1;
+int       qBakeKey = -1;
+bool      qReady = false;
+
+int qLocOfMode(uint8_t m) { for (int i = 0; i < QW_NLOC; i++) if (QLOC_MODE[i] == m) return i; return -1; }
+
+void qRle(const uint8_t *src, uint8_t *dst, int n) {
+  int o = 0, i = 0;
+  while (o < n) {
+    uint8_t b = src[i++];
+    if (b < 0x80) { uint8_t v = src[i++]; int c = min(b + 1, n - o); memset(dst + o, v, c); o += c; }
+    else { int c = b - 0x7F; while (c-- && o < n) dst[o++] = src[i++]; }
+  }
+}
+
+bool questInit() {
+  if (qReady) return true;
+  if (!qWorld) qWorld = (uint8_t *)ps_malloc(QW_W * QW_H);
+  if (!qFarI)  qFarI  = (uint8_t *)ps_malloc(QF_W * QF_H);
+  if (!qHillI) qHillI = (uint8_t *)ps_malloc(QH_W * QH_H);
+  if (!qFgI)   qFgI   = (uint8_t *)ps_malloc(QG_W * QG_H);
+  if (!qFar)   qFar   = (uint16_t *)ps_malloc(QF_W * 2 * QF_H * 2 * 2);
+  if (!qHill)  qHill  = (uint16_t *)ps_malloc(QH_W * 2 * QH_H * 2 * 2);
+  if (!qHillA) qHillA = (uint8_t *)ps_malloc(QH_W * 2 * QH_H * 2);
+  if (!qFg)    qFg    = (uint16_t *)ps_malloc(QG_W * 2 * QG_H * 2 * 2);
+  if (!qFgA)   qFgA   = (uint8_t *)ps_malloc(QG_W * 2 * QG_H * 2);
+  if (!qTmp)   qTmp   = (uint8_t *)ps_malloc(QF_W * 2 * QF_H * 2 * 4);
+  if (!qWorld || !qFarI || !qHillI || !qFgI || !qFar || !qHill || !qHillA || !qFg || !qFgA || !qTmp) return false;
+  qRle(QW_RLE, qWorld, QW_W * QW_H);
+  qRle(QF_RLE, qFarI, QF_W * QF_H);
+  qRle(QH_RLE, qHillI, QH_W * QH_H);
+  qRle(QG_RLE, qFgI, QG_W * QG_H);
+  qReady = true;
+  qBakeKey = -1;
+  return true;
+}
+
+// ───── light ─────
+struct QKey { float h; uint8_t top[3], hor[3]; float l[3], night; };
+const QKey QKEYS[] = {
+  {0.0f,  {8, 12, 40},   {36, 46, 100},  {0.32f, 0.38f, 0.64f}, 1.0f},
+  {4.6f,  {8, 12, 40},   {36, 46, 100},  {0.32f, 0.38f, 0.64f}, 1.0f},
+  {5.7f,  {44, 42, 112}, {246, 150, 130}, {0.74f, 0.60f, 0.72f}, 0.6f},
+  {7.0f,  {76, 146, 234}, {255, 214, 176}, {1.0f, 0.93f, 0.86f}, 0.05f},
+  {9.0f,  {64, 136, 234}, {178, 222, 255}, {1.0f, 1.0f, 1.0f}, 0.0f},
+  {16.0f, {64, 136, 234}, {178, 222, 255}, {1.0f, 1.0f, 1.0f}, 0.0f},
+  {17.4f, {82, 112, 204}, {255, 200, 128}, {1.05f, 0.9f, 0.74f}, 0.1f},
+  {18.7f, {46, 40, 112},  {248, 128, 100}, {0.78f, 0.58f, 0.66f}, 0.55f},
+  {20.0f, {14, 18, 56},   {52, 58, 122},  {0.40f, 0.44f, 0.70f}, 0.95f},
+  {24.0f, {8, 12, 40},    {36, 46, 100},  {0.32f, 0.38f, 0.64f}, 1.0f},
+};
+const char *qPeriod() {
+  float h = qHourNow;
+  return h < 5 ? "Night" : h < 7.5f ? "Dawn" : h < 12 ? "Morning" : h < 17 ? "Afternoon" : h < 19.5f ? "Evening" : "Night";
+}
+static inline float qLerp(float a, float b, float t) { return a + (b - a) * t; }
+
+void qBake();
+void qLightUpdate(bool force) {
+  static uint32_t lastChk = 0;
+  if (!force && millis() - lastChk < 4000 && qBakeKey >= 0) return;
+  lastChk = millis();
+  float h = 12;
+  struct tm t;
+  if (qHourForce >= 0) h = qHourForce;
+  else if (localNow(t)) h = t.tm_hour + t.tm_min / 60.0f;
+  qHourNow = h;
+  int key = (int)(h * 6);                              // a new look every 10 minutes
+  if (!force && key == qBakeKey) return;
+  qBakeKey = key;
+  int k = 0;
+  while (k < 8 && QKEYS[k + 1].h <= h) k++;
+  const QKey &a = QKEYS[k], &b = QKEYS[k + 1];
+  float f = (h - a.h) / max(0.01f, b.h - a.h);
+  float top[3], hor[3], l[3];
+  for (int i = 0; i < 3; i++) { top[i] = qLerp(a.top[i], b.top[i], f); hor[i] = qLerp(a.hor[i], b.hor[i], f); l[i] = qLerp(a.l[i], b.l[i], f); qHor[i] = (uint8_t)hor[i]; }
+  qNight = qLerp(a.night, b.night, f);
+  qDayK = clamp01(1 - qNight * 1.6f);
+  for (int i = 0; i < QPAL_N; i++) {
+    float r = QPAL[i][0], g = QPAL[i][1], bb = QPAL[i][2]; uint8_t kind = QPAL[i][3];
+    float o[3];
+    if (kind == 2) { o[0] = r; o[1] = g; o[2] = bb; }
+    else {
+      o[0] = r * l[0]; o[1] = g * l[1]; o[2] = bb * l[2];
+      if (kind == 1) { o[0] = qLerp(o[0], 255, qNight); o[1] = qLerp(o[1], 196, qNight); o[2] = qLerp(o[2], 104, qNight); }
+      if (kind == 3) for (int c = 0; c < 3; c++) o[c] = qLerp(o[c], hor[c], 0.22f);
+    }
+    for (int c = 0; c < 3; c++) qRgb[i][c] = (uint8_t)constrain((int)o[c], 0, 255);
+    qLut[i] = c565(qRgb[i][0], qRgb[i][1], qRgb[i][2]);
+    float s = 0.42f;                                    // characters keep a little more light so you can see them
+    qLutS[i] = kind == 2 ? qLut[i] : c565((uint8_t)constrain((int)(r * qLerp(l[0], 1, s)), 0, 255), (uint8_t)constrain((int)(g * qLerp(l[1], 1, s)), 0, 255), (uint8_t)constrain((int)(bb * qLerp(l[2], 1, s)), 0, 255));
+  }
+  for (int y = 0; y < 140; y++) {
+    float tt = clamp01(y / 100.0f); tt = tt * tt * (3 - 2 * tt);
+    qSky[y] = c565((uint8_t)qLerp(top[0], hor[0], tt), (uint8_t)qLerp(top[1], hor[1], tt), (uint8_t)qLerp(top[2], hor[2], tt));
+  }
+  if (qReady) qBake();
+}
+
+// box blur of an RGBA tile (w x h, premultiplied), wraps sideways
+static void qBlur(uint8_t *px, int w, int h, int r, uint8_t *line) {
+  int n = 2 * r + 1;
+  for (int y = 0; y < h; y++) {
+    uint8_t *row = px + y * w * 4;
+    memcpy(line, row, w * 4);
+    for (int c = 0; c < 4; c++) {
+      int s = 0;
+      for (int k = -r; k <= r; k++) s += line[((k + w) % w) * 4 + c];
+      for (int x = 0; x < w; x++) {
+        row[x * 4 + c] = s / n;
+        s += line[((x + r + 1) % w) * 4 + c] - line[((x - r + w) % w) * 4 + c];
+      }
+    }
+  }
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) memcpy(line + y * 4, px + (y * w + x) * 4, 4);
+    for (int c = 0; c < 4; c++) {
+      int s = 0;
+      for (int k = -r; k <= r; k++) s += line[constrain(k, 0, h - 1) * 4 + c];
+      for (int y = 0; y < h; y++) {
+        px[(y * w + x) * 4 + c] = s / n;
+        s += line[min(y + r + 1, h - 1) * 4 + c] - line[max(y - r, 0) * 4 + c];
+      }
+    }
+  }
+}
+
+// Renders an indexed layer at full size into RGBA, blurs it, and keeps it as RGB565 (+ alpha).
+static void qBakeLayer(const uint8_t *idx, int lw, int lh, int ly0, bool skyFill, int radius, uint16_t *out, uint8_t *alpha) {
+  int w = lw * 2, h = lh * 2;
+  static uint8_t line[1024 * 4];
+  for (int y = 0; y < h; y++) {
+    uint16_t sky = qSky[min(139, ly0 + y / 2)];
+    uint8_t sr = r8(sky), sg = g8(sky), sb = b8(sky);
+    for (int x = 0; x < w; x++) {
+      uint8_t i = idx[(y / 2) * lw + x / 2];
+      uint8_t *p = qTmp + (y * w + x) * 4;
+      if (i) { p[0] = qRgb[i][0]; p[1] = qRgb[i][1]; p[2] = qRgb[i][2]; p[3] = 255; }
+      else if (skyFill) { p[0] = sr; p[1] = sg; p[2] = sb; p[3] = 255; }
+      else { p[0] = p[1] = p[2] = p[3] = 0; }
+    }
+  }
+  if (radius) qBlur(qTmp, w, h, radius, line);
+  for (int i = 0; i < w * h; i++) {
+    uint8_t *p = qTmp + i * 4;
+    if (alpha) {
+      alpha[i] = p[3];
+      if (p[3]) out[i] = c565(min(255, p[0] * 255 / p[3]), min(255, p[1] * 255 / p[3]), min(255, p[2] * 255 / p[3]));
+    } else out[i] = c565(p[0], p[1], p[2]);
+  }
+}
+
+void qBake() {
+  qBakeLayer(qFarI, QF_W, QF_H, QF_Y0, true, 3, qFar, nullptr);
+  qBakeLayer(qHillI, QH_W, QH_H, QH_Y0, false, 1, qHill, qHillA);
+  qBakeLayer(qFgI, QG_W, QG_H, QG_Y0, false, 3, qFg, qFgA);
+}
+
+// ───── pixel helpers ─────
+static inline uint16_t qAdd(uint16_t c, uint16_t g, uint8_t a) {
+  int r = ((c >> 11) & 31) + ((((g >> 11) & 31) * a) >> 8), gg = ((c >> 5) & 63) + ((((g >> 5) & 63) * a) >> 8), b = (c & 31) + (((g & 31) * a) >> 8);
+  return (min(r, 31) << 11) | (min(gg, 63) << 5) | min(b, 31);
+}
+static inline uint16_t qMul(uint16_t c, int k) {   // k: 0..256
+  return (((((c >> 11) & 31) * k) >> 8) << 11) | (((((c >> 5) & 63) * k) >> 8) << 5) | (((c & 31) * k) >> 8);
+}
+static inline uint16_t qMul32(uint16_t c, uint32_t k) {   // k: 0..32, two multiplies
+  uint32_t rb = c & 0xF81F, g = c & 0x07E0;
+  return (((rb * k) >> 5) & 0xF81F) | (((g * k) >> 5) & 0x07E0);
+}
+static inline void qPx(int x, int y, uint16_t c) {           // one art pixel at real (x, y)
+  if ((unsigned)x < SCR_W - 1 && (unsigned)y < SCR_H - 1) { uint16_t *p = FB + y * SCR_W + x; p[0] = c; p[1] = c; p[SCR_W] = c; p[SCR_W + 1] = c; }
+  else { for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) if ((unsigned)(x + i) < SCR_W && (unsigned)(y + j) < SCR_H) FB[(y + j) * SCR_W + x + i] = c; }
+}
+static inline void qPxA(int x, int y, uint16_t c, uint8_t a) {
+  for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) if ((unsigned)(x + i) < SCR_W && (unsigned)(y + j) < SCR_H) { uint16_t *p = FB + (y + j) * SCR_W + x + i; *p = blend565(*p, c, a); }
+}
+void qRect(int x, int y, int w, int h, uint16_t c) { gfx->fillRect(x, y, w, h, c); }
+void qRectA(int x, int y, int w, int h, uint16_t c, uint8_t a) {
+  int x0 = max(0, x), y0 = max(0, y), x1 = min((int)SCR_W, x + w), y1 = min((int)SCR_H, y + h);
+  for (int yy = y0; yy < y1; yy++) { uint16_t *p = FB + yy * SCR_W; for (int xx = x0; xx < x1; xx++) p[xx] = blend565(p[xx], c, a); }
+}
+
+// an indexed sprite, scale = real px per art px
+void qSprite(const uint8_t *spr, int w, int h, int x, int y, bool flip, const uint16_t *lut, int sc = 2, uint8_t alpha = 255) {
+  for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) {
+    uint8_t v = spr[j * w + (flip ? w - 1 - i : i)];
+    if (!v) continue;
+    if (sc == 2 && alpha == 255) qPx(x + i * 2, y + j * 2, lut[v]);
+    else if (alpha == 255) qRect(x + i * sc, y + j * sc, sc, sc, lut[v]);
+    else qRectA(x + i * sc, y + j * sc, sc, sc, lut[v], alpha);
+  }
+}
+
+// soft additive light
+void qGlow(int cx, int cy, int r, uint16_t col, int strength) {
+  if (strength <= 0) return;
+  int r2 = r * r, inv = (1 << 24) / r2;
+  int y0 = max(0, cy - r), y1 = min((int)SCR_H - 1, cy + r), x0 = max(0, cx - r), x1 = min((int)SCR_W - 1, cx + r);
+  for (int y = y0; y <= y1; y++) {
+    uint16_t *row = FB + y * SCR_W; int dy = y - cy;
+    for (int x = x0; x <= x1; x++) {
+      int dx = x - cx, d2 = dx * dx + dy * dy;
+      if (d2 >= r2) continue;
+      int t = 256 - ((d2 * inv) >> 16);
+      int a = (t * t >> 8) * strength >> 8;
+      if (a > 0) row[x] = qAdd(row[x], col, min(a, 255));
+    }
+  }
+}
+
+// ───── pixel text ─────
+int qTextW(const QFont &f, const char *s, int sc = 2) {
+  int w = 0;
+  for (; *s; s++) { int c = (uint8_t)*s; if (c < 32 || c > 126 || (&f == &QF_BIG && c > 58)) c = ' '; w += f.g[c - 32].adv; }
+  return w * sc;
+}
+void qText(const QFont &f, const char *s, int x, int y, uint16_t col, int sc = 2, int shadow = -1) {
+  int base = y + f.asc * sc;
+  for (; *s; s++) {
+    int c = (uint8_t)*s; if (c < 32 || c > 126 || (&f == &QF_BIG && c > 58)) c = ' ';
+    const QGlyph &g = f.g[c - 32];
+    int bpr = (g.w + 7) / 8;
+    for (int r = 0; r < g.h; r++) for (int i = 0; i < g.w; i++) {
+      if (!(f.d[g.off + r * bpr + i / 8] & (0x80 >> (i & 7)))) continue;
+      int px = x + (g.xo + i) * sc, py = base + (g.yo + r) * sc;
+      if (shadow >= 0) qRect(px + sc / 2 + 1, py + sc / 2 + 1, sc, sc, (uint16_t)shadow);
+      qRect(px, py, sc, sc, col);
+    }
+    x += g.adv * sc;
+  }
+}
+void qTextC(const QFont &f, const char *s, int cx, int y, uint16_t col, int sc = 2, int shadow = -1) {
+  qText(f, s, cx - qTextW(f, s, sc) / 2, y, col, sc, shadow);
+}
+String qClip(const QFont &f, String s, int maxW) {
+  if (qTextW(f, s.c_str()) <= maxW) return s;
+  while (s.length() > 1 && qTextW(f, (s + "..").c_str()) > maxW) s = s.substring(0, s.length() - 1);
+  return s + "..";
+}
+#define Q_INK   qLutS[QC_INK]
+#define Q_WHITE c565(250, 248, 240)
+#define Q_GOLD  c565(250, 210, 90)
+#define Q_DIM   c565(170, 186, 230)
+#define Q_SHADOW c565(16, 14, 40)
+
+// The classic JRPG window: a blue gradient, a white frame, gold corners.
+void qWindow(int x, int y, int w, int h, uint8_t alpha = 236) {
+  x &= ~1; y &= ~1; w &= ~1; h &= ~1;
+  const uint16_t top = c565(56, 80, 196), bot = c565(18, 26, 96);
+  for (int j = 4; j < h - 4; j++) {
+    uint16_t c = mix565(top, bot, (uint8_t)(j * 255 / h));
+    int inset = (j < 6 || j >= h - 6) ? 6 : 4;
+    qRectA(x + inset, y + j, w - 2 * inset, 1, c, alpha);
+  }
+  const uint16_t ink = c565(20, 16, 40), lite = c565(250, 250, 255), mid = c565(176, 186, 214);
+  qRect(x + 4, y, w - 8, 2, ink); qRect(x + 4, y + h - 2, w - 8, 2, ink);
+  qRect(x, y + 4, 2, h - 8, ink); qRect(x + w - 2, y + 4, 2, h - 8, ink);
+  qRect(x + 2, y + 2, 2, 2, ink); qRect(x + w - 4, y + 2, 2, 2, ink); qRect(x + 2, y + h - 4, 2, 2, ink); qRect(x + w - 4, y + h - 4, 2, 2, ink);
+  qRect(x + 4, y + 2, w - 8, 2, lite); qRect(x + 2, y + 4, 2, h - 8, lite);
+  qRect(x + 4, y + h - 4, w - 8, 2, mid); qRect(x + w - 4, y + 4, 2, h - 8, mid);
+  const uint16_t g1 = c565(250, 210, 90), g0 = c565(160, 100, 30);
+  int cx[4] = {x + 2, x + w - 8, x + 2, x + w - 8}, cy[4] = {y + 2, y + 2, y + h - 8, y + h - 8};
+  for (int k = 0; k < 4; k++) {
+    qRect(cx[k] + 2, cy[k], 2, 6, g0); qRect(cx[k], cy[k] + 2, 6, 2, g0); qRect(cx[k] + 2, cy[k] + 2, 2, 2, g1);
+  }
+}
+// a small gold title plate that sits on a window's top edge
+void qPlate(const char *s, int cx, int y) {
+  int w = qTextW(QF_BODY, s) + 16; int x = (cx - w / 2) & ~1;
+  qRect(x + 2, y, w - 4, 18, c565(60, 34, 14)); qRect(x, y + 2, w, 14, c565(60, 34, 14));
+  qRect(x + 2, y + 2, w - 4, 14, c565(214, 152, 44)); qRect(x + 2, y + 2, w - 4, 2, c565(255, 230, 140)); qRect(x + 2, y + 14, w - 4, 2, c565(150, 92, 26));
+  qText(QF_BODY, s, x + 8, y + 3, c565(60, 26, 10));
+}
+void qBar(int x, int y, int w, float f, uint16_t c0, uint16_t c1) {
+  qRect(x, y, w, 10, c565(20, 16, 40)); qRect(x + 2, y + 2, w - 4, 6, c565(44, 40, 78));
+  int fw = (int)((w - 4) * clamp01(f)) & ~1;
+  if (fw > 0) { qRect(x + 2, y + 2, fw, 2, c1); qRect(x + 2, y + 4, fw, 4, c0); }
+}
+void qArrow(int x, int y, int dir, uint16_t c) {          // a little pixel triangle, dir: 0 down, 1 right, -1 left
+  for (int k = 0; k < 4; k++) {
+    if (dir == 0) qRect(x - 6 + k * 2, y + k * 2, 12 - k * 4, 2, c);
+    else if (dir == 2) qRect(x - 6 + k * 2, y - k * 2, 12 - k * 4, 2, c);
+    else if (dir > 0) qRect(x + k * 2, y - 6 + k * 2, 2, 12 - k * 4, c);
+    else qRect(x - k * 2, y - 6 + k * 2, 2, 12 - k * 4, c);
+  }
+}
+
+// ───── the scene ─────
+float qCam = 0, qHeroX = 36, qWalkFrom = 0, qCamFrom = 0;
+int   qLoc = 0, qShown = 0;
+int8_t qFace = 1;
+uint32_t qWalkAt = 0, qWalkMs = 0, qArriveAt = 0, qJumpAt = 0, qEnterAt = 0;
+uint8_t qMosaicIn = 0;
+struct QMote { float x, y, vx, vy, ph; };
+QMote qMote[16];
+struct QCoin { float x, y, vx, vy; uint32_t t; };
+QCoin qCoin[8];
+
+static inline int qMod(int a, int m) { a %= m; return a < 0 ? a + m : a; }
+
+void qBlitSky() {
+  for (int y = 0; y < QF_Y0 * 2; y++) { uint16_t c = qSky[y / 2]; uint16_t *p = FB + y * SCR_W; for (int x = 0; x < SCR_W; x++) p[x] = c; }
+}
+void qStars() {
+  if (qNight < 0.3f) return;
+  uint32_t s = 1234567;
+  for (int i = 0; i < 46; i++) {
+    s = s * 1103515245u + 12345u; int x = (s >> 8) % 120; s = s * 1103515245u + 12345u; int y = (s >> 8) % 44;
+    int tw = (frameNo / 3 + i * 7) % 40;
+    uint16_t c = tw < 4 ? c565(255, 255, 255) : c565(200, 210, 255);
+    uint8_t a = (uint8_t)(255 * clamp01((qNight - 0.3f) * 2.5f) * (tw < 4 ? 1 : 0.65f));
+    if (i % 9 == 0) { qPxA(x * 2 - 2, y * 2, c, a / 2); qPxA(x * 2 + 2, y * 2, c, a / 2); qPxA(x * 2, y * 2 - 2, c, a / 2); qPxA(x * 2, y * 2 + 2, c, a / 2); }
+    qPxA(x * 2, y * 2, c, a);
+  }
+}
+void qSunMoon() {
+  float h = qHourNow;
+  bool day = h >= 6 && h < 18.8f;
+  float f = day ? (h - 6) / 12.8f : (h >= 18.8f ? (h - 18.8f) : (h + 5.2f)) / 11.2f;
+  int x = 24 + (int)(f * 192), y = 70 - (int)(sinf(f * 3.14159f) * 46);
+  if (day) {
+    qGlow(x, y, 36, c565(255, 220, 140), 130);
+    qGlow(x, y, 15, c565(255, 250, 220), 255);
+    gfx->fillCircle(x, y, 7, c565(255, 250, 226));
+  } else {
+    qGlow(x, y, 34, c565(140, 170, 255), 70);
+    gfx->fillCircle(x, y, 8, c565(236, 236, 214));
+    gfx->fillCircle(x + 4, y - 3, 7, qSky[min(139, y / 2)]);
+    qRect(x - 5, y + 1, 2, 2, c565(200, 200, 180));
+  }
+}
+void qClouds(float cam) {
+  float t = millis() / 1000.0f;
+  for (int i = 0; i < 4; i++) {
+    const uint8_t *spr = i % 2 ? QCLOUD1 : QCLOUD0; int w = i % 2 ? QCLOUD1_W : QCLOUD0_W, h = i % 2 ? QCLOUD1_H : QCLOUD0_H;
+    float span = 120 + w;
+    float lx = fmodf(i * 61.0f - cam * 0.12f + t * (1.2f + i * 0.4f), span); if (lx < 0) lx += span;
+    int x = (int)((lx - w) * 2), y = 18 + i * 16 + (i == 3 ? -30 : 0);
+    qSprite(spr, w, h, x, y, false, qLut, 2, (uint8_t)(200 - qNight * 110));
+  }
+}
+void qSkyLife() {
+  uint32_t ms = millis();
+  if (qNight < 0.5f) {                                   // a few birds cross now and then
+    uint32_t cyc = ms % 26000;
+    if (cyc < 9000) {
+      float p = cyc / 9000.0f;
+      for (int b = 0; b < 4; b++) {
+        int x = (int)(-20 + p * 290) - b * 14 + (b % 2) * 4, y = 40 + b * 6 + (int)(sinf(p * 9 + b) * 4);
+        bool up = ((ms / 140) + b) % 2;
+        uint16_t c = qLut[QC_INK];
+        qRect(x & ~1, y & ~1, 2, 2, c);
+        qRect((x - 4) & ~1, (y - (up ? 2 : -2)) & ~1, 4, 2, c); qRect((x + 2) & ~1, (y - (up ? 2 : -2)) & ~1, 4, 2, c);
+      }
+    }
+  } else {                                               // a shooting star
+    uint32_t cyc = ms % 17000;
+    if (cyc < 700) {
+      float p = cyc / 700.0f;
+      int x = 40 + (int)(p * 150), y = 16 + (int)(p * 50);
+      for (int k = 0; k < 14; k++) qPxA(x - k * 4, y - k * 2 + (k & 1), c565(255, 255, 230), (uint8_t)(255 - k * 18));
+    }
+  }
+}
+void qBlitFar(float cam) {
+  int off = qMod((int)(cam * 0.25f * 2), QF_W * 2);
+  for (int y = 0; y < QF_H * 2; y++) {
+    uint16_t *dst = FB + (QF_Y0 * 2 + y) * SCR_W, *src = qFar + y * QF_W * 2;
+    int n1 = min((int)SCR_W, QF_W * 2 - off);
+    memcpy(dst, src + off, n1 * 2);
+    if (n1 < SCR_W) memcpy(dst + n1, src, (SCR_W - n1) * 2);
+  }
+}
+void qBlitAlpha(const uint16_t *col, const uint8_t *al, int tw, int th, int y0, int off) {
+  for (int y = 0; y < th; y++) {
+    int yy = y0 + y; if (yy < 0 || yy >= SCR_H) continue;
+    uint16_t *dst = FB + yy * SCR_W; const uint16_t *s = col + y * tw; const uint8_t *a = al + y * tw;
+    int sx = qMod(off, tw);
+    for (int x = 0; x < SCR_W; x++, sx++) {
+      if (sx >= tw) sx = 0;
+      uint8_t v = a[sx];
+      if (!v) continue;
+      dst[x] = v > 247 ? s[sx] : blend565(dst[x], s[sx], v);
+    }
+  }
+}
+void qBlitWorld(float cam) {
+  int camR = (int)floorf(cam * 2);
+  int par = camR & 1, lx0 = qMod(camR >> 1, QW_W);
+  for (int ly = 0; ly < QW_H; ly++) {
+    uint16_t *r0 = FB + (QW_Y0 + ly) * 2 * SCR_W, *r1 = r0 + SCR_W;
+    const uint8_t *src = qWorld + ly * QW_W;
+    int lx = lx0;
+    for (int x = 0; x < SCR_W; x++) {
+      uint8_t v = src[lx];
+      if (v) { uint16_t c = qLut[v]; r0[x] = c; r1[x] = c; }
+      if ((x + par) & 1) { if (++lx >= QW_W) lx = 0; }
+    }
+  }
+}
+// screen position (real px) of a world point; returns false when well off screen
+bool qOnScreen(float cam, int wx, int wy, int &sx, int &sy, int margin = 40) {
+  float d = wx - cam;
+  d = fmodf(d, (float)QW_W); if (d < -QW_W / 2) d += QW_W; if (d > QW_W / 2) d -= QW_W;
+  sx = (int)floorf(d * 2); sy = wy * 2;
+  return sx > -margin && sx < SCR_W + margin;
+}
+
+void qHero(int sx, int sy, int frame, bool flip, bool blink) {
+  const uint8_t *f = QHERO + frame * QHERO_W * QHERO_H;
+  qRectA(sx + 6, sy + QHERO_H * 2 - 4, 20, 4, c565(10, 10, 30), 90);    // shadow
+  for (int j = 0; j < QHERO_H; j++) for (int i = 0; i < QHERO_W; i++) {
+    uint8_t v = f[j * QHERO_W + (flip ? QHERO_W - 1 - i : i)];
+    if (!v) continue;
+    if (blink && (j == 10 || j == 11) && v == QC_INK) {
+      int ii = flip ? QHERO_W - 1 - i : i;
+      if (ii == 8 || ii == 11) v = j == 11 ? QC_INK : QC_SK;
+    }
+    qPx(sx + i * 2, sy + j * 2, qLutS[v]);
+  }
+}
+
+// things that move in the village
+void qDynamic(float cam, bool withPet) {
+  int sx, sy; uint32_t ms = millis(); float t = ms / 1000.0f;
+  // clock hands on the tower
+  if (qOnScreen(cam, QD_CLOCK[0], QD_CLOCK[1], sx, sy)) {
+    struct tm tm; float hh = 10, mm = 10;
+    if (localNow(tm)) { hh = tm.tm_hour % 12 + tm.tm_min / 60.0f; mm = tm.tm_min; }
+    float ah = hh * 0.5236f, am = mm * 0.10472f;
+    uint16_t ink = qLut[QC_INK];
+    for (int k = 1; k <= 4; k++) qPx(sx + (int)roundf(sinf(ah) * k) * 2, sy - (int)roundf(cosf(ah) * k) * 2, ink);
+    for (int k = 1; k <= 6; k++) qPx(sx + (int)roundf(sinf(am) * k) * 2, sy - (int)roundf(cosf(am) * k) * 2, qLut[QC_R]);
+    qPx(sx, sy, ink);
+    if (qNight > 0.4f) qGlow(sx, sy, 26, c565(255, 220, 140), (int)(qNight * 70));
+  }
+  // chimney smoke
+  if (qOnScreen(cam, QD_SMOKE[0], QD_SMOKE[1], sx, sy)) {
+    for (int i = 0; i < 6; i++) {
+      float p = fmodf(t * 0.5f + i / 6.0f, 1.0f);
+      int x = sx + (int)(sinf(p * 6 + i) * 4 + p * 18), y = sy - (int)(p * 46);
+      int r = 2 + (int)(p * 4);
+      uint16_t c = mix565(qLut[QC_CL2], qLut[QC_CL3], (uint8_t)(p * 200));
+      for (int j = -r; j <= r; j++) for (int i = -r; i <= r; i++)
+        if (i * i + j * j <= r * r) qPxA((x & ~1) + i * 2, (y & ~1) + j * 2, c, (uint8_t)(170 * (1 - p)));
+    }
+  }
+  // campfire
+  if (qOnScreen(cam, QD_FIRE[0], QD_FIRE[1], sx, sy)) {
+    qGlow(sx, sy - 6, 60, c565(255, 150, 60), 60 + (int)(qNight * 120) + (int)(sinf(t * 13) * 14));
+    for (int i = 0; i < 7; i++) {
+      float p = fmodf(t * 1.6f + i * 0.37f, 1.0f);
+      int x = sx - 6 + (i * 5) % 12 + (int)(sinf(t * 9 + i) * 2), y = sy - 2 - (int)(p * 22);
+      uint16_t c = p < 0.3f ? qLut[QC_F3] : p < 0.55f ? qLut[QC_F2] : p < 0.8f ? qLut[QC_F1] : qLut[QC_F0];
+      int s = p < 0.5f ? 4 : 2;
+      qRect(x & ~1, y & ~1, s, s, c);
+    }
+    qRect(sx - 4, sy - 4, 8, 4, qLut[QC_F2]); qRect(sx - 2, sy - 8, 4, 4, qLut[QC_F3]);
+  }
+  // the minstrel and notes
+  if (qOnScreen(cam, QD_BARD[0], QD_BARD[1], sx, sy)) {
+    int bob = ((frameNo / 8) % 2) * 2;
+    qSprite(QBARD, QBARD_W, QBARD_H, sx - QBARD_W, sy - QBARD_H * 2 + 8 + bob, false, qLutS);
+    bool playing = jbPlaying || (frameNo / 90) % 3 == 0;
+    if (playing) for (int i = 0; i < 3; i++) {
+      float p = fmodf(t * 0.6f + i / 3.0f, 1.0f);
+      qSprite(QNOTE, QNOTE_W, QNOTE_H, sx + 4 + (int)(sinf(p * 7 + i) * 6) + i * 6, sy - 40 - (int)(p * 40), false, qLutS, 2, (uint8_t)(255 * (1 - p)));
+    }
+  }
+  // the owl looks around and blinks
+  if (qOnScreen(cam, QD_OWL[0], QD_OWL[1], sx, sy)) {
+    int look = (int)(sinf(t * 0.7f) * 1.6f);
+    bool blink = (frameNo % 90) < 4;
+    for (int e = 0; e < 2; e++) {
+      int ex = sx - 8 + e * 8;
+      if (blink) qRect(ex - 2, sy + 4, 6, 2, qLut[QC_T1]);
+      else { qRect(ex + look * 2, sy + 2, 2, 4, qLutS[QC_INK]); }
+    }
+    if (qNight > 0.4f) { qGlow(sx - 6, sy + 4, 8, c565(255, 230, 120), (int)(qNight * 90)); qGlow(sx + 2, sy + 4, 8, c565(255, 230, 120), (int)(qNight * 90)); }
+  }
+  // the pet in its yard
+  if (withPet && qOnScreen(cam, QD_PET[0], QD_PET[1], sx, sy)) {
+    const char *const *spr = petSpecies == 1 ? GHOST : petSpecies == 2 ? FROG : CAT;
+    int hop = (int)(fabsf(sinf(t * 3)) * 4) & ~1;
+    qRectA(sx - 10, sy - 2, 22, 4, c565(10, 10, 30), 80);
+    drawSprite(spr, sx - 12, sy - 24 - hop, 2, mix565(petColor, COL_BLACK, (uint8_t)(qNight * 120)), (frameNo % 70) < 3);
+  }
+  // the crystal ball shimmers
+  if (qOnScreen(cam, QD_CRYSTAL[0], QD_CRYSTAL[1], sx, sy)) {
+    qGlow(sx, sy, 22, c565(120, 220, 255), 70 + (int)(sinf(t * 2.3f) * 30) + (int)(qNight * 80));
+    int a = (frameNo / 6) % 8; qPx(sx - 4 + a, sy - 2 + (a % 3) * 2, c565(255, 255, 255));
+  }
+  // theatre marquee: chasing bulbs and the word SHOW
+  if (qOnScreen(cam, QD_MARQUEE[0], QD_MARQUEE[1], sx, sy, 140)) {
+    int w = QD_MARQUEE[2] * 2, h = QD_MARQUEE[3] * 2;
+    for (int i = 0; i < w; i += 6) {
+      bool on = ((i / 6 + frameNo / 4) % 3) == 0;
+      uint16_t c = on ? c565(255, 240, 160) : c565(150, 90, 40);
+      qRect(sx + i, sy, 2, 2, c); qRect(sx + w - 2 - i, sy + h - 2, 2, 2, c);
+    }
+    qTextC(QF_BODY, "TONIGHT", sx + w / 2, sy + 2, c565(255, 226, 120));
+    if (qNight > 0.3f) qGlow(sx + w / 2, sy + h / 2, 50, c565(255, 180, 90), (int)(qNight * 60));
+  }
+  // the guild's flag waves
+  if (qOnScreen(cam, QD_FLAG[0], QD_FLAG[1], sx, sy)) {
+    qRect(sx, sy - 12, 2, 16, qLut[QC_M0]);
+    for (int i = 0; i < 9; i++) {
+      int dy = (int)(sinf(t * 6 - i * 0.8f) * 1.5f) * 2;
+      for (int j = 0; j < 5; j++) qPx(sx + 2 + i * 2, sy - 12 + j * 2 + dy, j == 2 ? qLut[QC_Y2] : qLut[i < 2 ? QC_RD : QC_R]);
+    }
+  }
+  // the lighthouse lamp sweeps its beam
+  if (qOnScreen(cam, QD_LAMP[0], QD_LAMP[1], sx, sy, 200)) {
+    float a = t * 1.4f, c = cosf(a);
+    int len = (int)(fabsf(c) * 110) + 10;
+    for (int k = 6; k < len; k += 2) {
+      int bx = sx + (c > 0 ? k : -k), spread = 2 + k / 10;
+      uint8_t al = (uint8_t)((40 + qNight * 80) * (1 - (float)k / len));
+      for (int j = -spread; j <= spread; j += 2) if (bx >= 0 && bx < SCR_W && sy + j >= 0) { uint16_t *p = FB + (sy + j) * SCR_W + bx; *p = qAdd(*p, c565(255, 240, 180), al); p[1] = qAdd(p[1], c565(255, 240, 180), al); }
+    }
+    qGlow(sx, sy, 30, c565(255, 230, 150), 120 + (int)(qNight * 100));
+  }
+  // street lamps glow at night
+  if (qNight > 0.15f)
+    for (int i = 0; i < QLAMP_N; i++)
+      if (qOnScreen(cam, QLAMP[i][0], QLAMP[i][1], sx, sy)) qGlow(sx, sy, 34, c565(255, 200, 110), (int)(qNight * 150));
+}
+
+void qMotes(bool fire) {
+  float t = millis() / 1000.0f;
+  for (int i = 0; i < 16; i++) {
+    QMote &m = qMote[i];
+    if (m.ph == 0) { m.x = random(0, 240); m.y = random(60, 250); m.vx = random(-30, 30) / 100.0f; m.vy = -random(5, 30) / 100.0f; m.ph = random(1, 628) / 100.0f; }
+    m.x += m.vx + sinf(t + m.ph) * 0.3f; m.y += m.vy + cosf(t * 0.7f + m.ph) * 0.2f;
+    if (m.y < 40 || m.x < -4 || m.x > 244) { m.x = random(0, 240); m.y = random(150, 250); }
+    if (qNight > 0.5f || fire) {                                  // fireflies
+      float b = 0.5f + 0.5f * sinf(t * 3 + m.ph * 3);
+      if (i < 10) { qGlow((int)m.x, (int)m.y, 7, c565(200, 255, 120), (int)(200 * b)); qRect((int)m.x & ~1, (int)m.y & ~1, 2, 2, c565(240, 255, 190)); }
+    } else if (i < 9) {                                           // dust in the sunlight
+      qRectA((int)m.x & ~1, (int)m.y & ~1, 2, 2, c565(255, 250, 220), (uint8_t)(110 + 80 * sinf(t * 2 + m.ph)));
+    }
+  }
+}
+void qRays() {
+  if (qDayK < 0.2f || qHourNow < 6.5f || qHourNow > 18.5f) return;
+  float t = millis() / 1000.0f;
+  uint8_t tri[32];
+  for (int r = 0; r < 3; r++) {
+    int w = 12 + r * 5;
+    for (int d = 0; d < w; d++) tri[d] = (uint8_t)(255 * (w - d) / w);
+    float x0 = -40 + r * 70 + sinf(t * 0.2f + r) * 6;
+    int a0 = (int)((22 + 8 * sinf(t * 0.5f + r * 2)) * qDayK);
+    for (int y = 0; y < 210; y += 2) {
+      int fa = a0 * (210 - y) / 210;
+      if (fa <= 0) break;
+      int cx = (int)(x0 + y * 0.55f);
+      uint16_t *r0 = FB + y * SCR_W, *r1 = r0 + SCR_W;
+      for (int x = max(0, cx - w + 1); x < min((int)SCR_W, cx + w); x++) {
+        int a = (fa * tri[abs(x - cx)]) >> 8;
+        if (a > 0) { r0[x] = qAdd(r0[x], c565(255, 244, 210), a); r1[x] = qAdd(r1[x], c565(255, 244, 210), a); }
+      }
+    }
+  }
+}
+uint8_t qVx[SCR_W], qVy[SCR_H]; bool qVinit = false;
+void qVignette() {
+  if (!qVinit) {
+    for (int x = 0; x < SCR_W; x++) { float d = fabsf(x - 119.5f) / 120; qVx[x] = (uint8_t)(255 * (1 - powf(clamp01((d - 0.62f) / 0.38f), 2) * 0.42f)); }
+    for (int y = 0; y < SCR_H; y++) { float d = fabsf(y - 139.5f) / 140; qVy[y] = (uint8_t)(255 * (1 - powf(clamp01((d - 0.6f) / 0.4f), 2) * 0.45f)); }
+    qVinit = true;
+  }
+  for (int y = 0; y < SCR_H; y++) {
+    uint16_t *row = FB + y * SCR_W; int ky = qVy[y] + 1;
+    if (ky > 255) { for (int x = 0; x < 46; x++) { row[x] = qMul32(row[x], (qVx[x] + 1) >> 3); row[SCR_W - 1 - x] = qMul32(row[SCR_W - 1 - x], (qVx[SCR_W - 1 - x] + 1) >> 3); } }
+    else for (int x = 0; x < SCR_W; x++) row[x] = qMul32(row[x], (ky * (qVx[x] + 1)) >> 11);
+  }
+}
+// out-of-focus bottom edge (tilt-shift): more blur passes the closer to the bottom
+static inline uint16_t qAvg(uint16_t a, uint16_t b) { return (a & b) + (((a ^ b) & 0xF7DE) >> 1); }
+void qDof() {
+  for (int y = 248; y < SCR_H; y++) {
+    uint16_t *row = FB + y * SCR_W, *up = row - SCR_W;
+    int passes = 1 + (y - 248) / 11;
+    for (int p = 0; p < passes; p++) {
+      uint16_t prev = row[0];
+      for (int x = 0; x < SCR_W - 1; x++) { uint16_t cur = row[x]; row[x] = qAvg(qAvg(prev, row[x + 1]), cur); prev = cur; }
+    }
+    if (y > 252) for (int x = 0; x < SCR_W; x++) row[x] = qAvg(qAvg(row[x], up[x]), row[x]);
+  }
+}
+
+// The whole scene at a camera position. hero: draw the hero (home only).
+void qScene(float cam, bool hero, bool pet = true) {
+  qLightUpdate(false);
+  qBlitSky();
+  qStars();
+  qSunMoon();
+  qSkyLife();
+  qBlitFar(cam);
+  qClouds(cam);
+  qBlitAlpha(qHill, qHillA, QH_W * 2, QH_H * 2, QH_Y0 * 2, (int)(cam * 0.5f * 2));
+  qBlitWorld(cam);
+  qDynamic(cam, pet);
+  if (hero) {
+    uint32_t ms = millis();
+    int frame = 0; bool walking = qWalkAt && ms - qWalkAt < qWalkMs;
+    int lift = 0;
+    if (walking) frame = 2 + (int)(fabsf(qHeroX) / 5) % 4;
+    else frame = (ms / 600) % 2;
+    if (qJumpAt && ms - qJumpAt < 420) { float p = (ms - qJumpAt) / 420.0f; lift = (int)(sinf(p * 3.14159f) * 26) & ~1; frame = 6; }
+    if (qEnterAt) { float p = min(1.0f, (ms - qEnterAt) / 360.0f); lift = (int)(sinf(p * 3.14159f) * 20) & ~1; frame = 6; }
+    int sx = (int)floorf((qHeroX - cam) * 2), sy = (QW_FEET - QHERO_H) * 2 - lift;
+    qHero(sx, sy, frame, qFace < 0, !walking && (frameNo % 110) < 4);
+    for (int i = 0; i < 8; i++) {                               // coins from a jump
+      QCoin &c = qCoin[i];
+      if (!c.t || ms - c.t > 900) continue;
+      c.x += c.vx; c.y += c.vy; c.vy += 0.5f;
+      bool edge = (frameNo / 3 + i) % 2;
+      qSprite(edge ? QCOIN1 : QCOIN0, QCOIN0_W, QCOIN0_H, (int)c.x, (int)c.y, false, qLutS);
+    }
+  }
+  qBlitAlpha(qFg, qFgA, QG_W * 2, QG_H * 2, QG_Y0 * 2, (int)(cam * 1.35f * 2));
+  qRays();
+  qMotes(false);
+  qDof();
+  qVignette();
+}
+
+// top corners: time on the left, battery on the right
+void qHud() {
+  char b[16];
+  struct tm t;
+  if (timerEndAt) {
+    unsigned long left = (timerEndAt - millis()) / 1000;
+    snprintf(b, sizeof(b), "%lu:%02lu", left / 60, left % 60);
+  } else if (localNow(t)) {
+    int h = t.tm_hour; if (!use24h) { h %= 12; if (!h) h = 12; }
+    snprintf(b, sizeof(b), "%d:%02d", h, t.tm_min);
+  } else snprintf(b, sizeof(b), "--:--");
+  int w = qTextW(QF_BODY, b) + 34;
+  qWindow(22, 8, w, 26, 210);
+  bool night = qNight > 0.5f;
+  qSprite(night ? QMOON : QSUN, 8, 8, 30, 13, false, qLutS);
+  qText(QF_BODY, b, 48, 13, timerEndAt ? Q_GOLD : Q_WHITE, 2, Q_SHADOW);
+  snprintf(b, sizeof(b), "%d%%", batPct);
+  int bw = qTextW(QF_BODY, b) + 36 + (bleConnected ? 14 : 0);
+  int bx = (218 - bw) & ~1;
+  qWindow(bx, 8, bw, 26, 210);
+  uint16_t col = charging ? c565(150, 255, 120) : batPct > 20 ? Q_WHITE : c565(255, 110, 100);
+  qSprite(QHEART, 8, 8, bx + 8, 13, false, qLutS);
+  qText(QF_BODY, b, bx + 26, 13, col, 2, Q_SHADOW);
+  if (bleConnected) qSprite(QGEM, 8, 8, bx + bw - 22, 13, false, qLutS);
+}
+
+void qMosaic(int block, int darken) {
+  for (int by = 0; by < SCR_H; by += block) for (int bx = 0; bx < SCR_W; bx += block) {
+    uint16_t c = FB[min(SCR_H - 1, by + block / 2) * SCR_W + min(SCR_W - 1, bx + block / 2)];
+    if (darken) c = qMul(c, 256 - darken);
+    int w = min(block, SCR_W - bx), h = min(block, SCR_H - by);
+    for (int y = 0; y < h; y++) { uint16_t *p = FB + (by + y) * SCR_W + bx; for (int x = 0; x < w; x++) p[x] = c; }
+  }
+}
+// The JRPG transition: the picture breaks into bigger and bigger blocks and fades out.
+void questTransitionOut() {
+  if (!FB || !prevFb || sleeping) return;
+  memcpy(prevFb, FB, FB_BYTES);
+  static const uint8_t B[6] = {4, 6, 10, 14, 20, 28};
+  for (int s = 0; s < 6; s++) {
+    memcpy(FB, prevFb, FB_BYTES);
+    qMosaic(B[s], s * 40);
+    gfx->flush();
+  }
+  qMosaicIn = 5;
+}
+void questPost() {                     // runs after a frame is drawn: the transition back in
+  if (!qMosaicIn) return;
+  static const uint8_t B[6] = {0, 4, 8, 12, 18, 24};
+  qMosaic(B[qMosaicIn], qMosaicIn * 34);
+  qMosaicIn--;
+}
+
+// ───── home: the village ─────
+void questGo(int dir) {
+  uint32_t ms = millis();
+  qWalkFrom = qHeroX; qCamFrom = qCam;
+  qLoc += dir;
+  qFace = dir > 0 ? 1 : -1;
+  qWalkAt = ms;
+  float dist = fabsf(qLoc * (float)QW_SPACING + QHERO_SX[qMod(qLoc, QW_NLOC)] - qWalkFrom);
+  qWalkMs = (uint32_t)(380 + dist * 6.5f);
+  qArriveAt = 0;
+  qEnterAt = 0;
+  sfx(0);
+}
+void questPlace(int loc) {                // stand at a landmark without walking
+  qLoc = loc; qShown = qMod(loc, QW_NLOC);
+  qCam = loc * (float)QW_SPACING; qHeroX = qCam + QHERO_SX[qShown];
+  qWalkAt = 0; qArriveAt = millis(); qFace = 1;
+}
+void questJump() {
+  qJumpAt = millis();
+  int sx = (int)((qHeroX - qCam) * 2) + 10, sy = (QW_FEET - QHERO_H) * 2;
+  for (int i = 0; i < 8; i++) { QCoin &c = qCoin[i]; c.x = sx; c.y = sy; c.vx = random(-30, 31) / 10.0f; c.vy = -random(50, 90) / 10.0f; c.t = millis(); }
+  sfx(3);
+}
+void questEnter() { if (!qEnterAt) { qEnterAt = millis(); sfx(4); } }
+
+void drawQuestHome() {
+  if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); qTextC(QF_BODY, "Not enough memory", 120, 130, Q_WHITE); return; }
+  uint32_t ms = millis();
+  if (qWalkAt) {
+    float p = min(1.0f, (ms - qWalkAt) / (float)qWalkMs);
+    float e = p < 0.5f ? 2 * p * p : 1 - powf(-2 * p + 2, 2) / 2;
+    float tx = qLoc * (float)QW_SPACING + QHERO_SX[qMod(qLoc, QW_NLOC)], tc = qLoc * (float)QW_SPACING;
+    qHeroX = qWalkFrom + (tx - qWalkFrom) * e;
+    qCam = qCamFrom + (tc - qCamFrom) * e;
+    if (p >= 1) { qWalkAt = 0; qArriveAt = ms; qShown = qMod(qLoc, QW_NLOC); qFace = 1; }
+  }
+  if (qEnterAt && ms - qEnterAt > 380) { qEnterAt = 0; openModule(QLOC_MODE[qShown]); return; }
+  qScene(qCam, true);
+  qHud();
+  if (qWalkAt) return;
+  // where you are: a window slides up from the bottom
+  float s = min(1.0f, (ms - qArriveAt) / 220.0f); s = 1 - (1 - s) * (1 - s);
+  int y = (284 - (int)(s * 60)) & ~1;
+  const char *name = QLOC_NAME[qShown];
+  int w = max(qTextW(QF_TITLE, name), qTextW(QF_BODY, QLOC_SUB[qShown])) + 36;
+  w = max(w, 132);
+  qWindow(120 - w / 2, y, w, 56);
+  qTextC(QF_TITLE, name, 120, y + 3, Q_WHITE, 2, Q_SHADOW);
+  // little arrows: walk on either side, enter in the middle
+  int bob = ((ms / 300) % 2) * 2;
+  qArrow(14 - bob, 140, -1, Q_WHITE); qArrow(226 + bob, 140, 1, Q_WHITE);
+  int dx = (int)((qLoc * (float)QW_SPACING + QDOOR[qShown][0] - qCam) * 2);
+  if (!qEnterAt && s >= 1) { qArrow(dx + 2, QDOOR[qShown][1] * 2 - 14 + bob + 2, 0, Q_SHADOW); qArrow(dx, QDOOR[qShown][1] * 2 - 14 + bob, 0, Q_GOLD); }
+  qTextC(QF_BODY, QLOC_SUB[qShown], 120, y + 30, Q_DIM);
+}
+
+// ───── the screens behind each door ─────
+float qCamOf(uint8_t m) { int l = qLocOfMode(m); return l < 0 ? 0 : l * (float)QW_SPACING; }
+void qBackdrop(uint8_t m, int dim = 0) {
+  if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); return; }
+  qScene(qCamOf(m), false, m != M_PET);
+  if (dim) { uint32_t k = (256 - dim) >> 3; for (int i = 0; i < SCR_W * SCR_H; i++) FB[i] = qMul32(FB[i], k); }
+}
+
+void questTopBar(bool showTime) { (void)showTime; qHud(); }
+
+void questToast() {
+  String m = toastMsg;
+  int w = qTextW(QF_BODY, m.c_str()) + 32; w = max(w, 80);
+  qWindow(120 - w / 2, 214, w, 30);
+  qTextC(QF_BODY, m.c_str(), 120, 220, Q_WHITE, 2, Q_SHADOW);
+}
+
+void questOverlay(const char *big, const char *small, float frac) {
+  qWindow(24, 100, 192, frac >= 0 ? 80 : 86);
+  qTextC(QF_TITLE, big, 120, 108, Q_WHITE, 2, Q_SHADOW);
+  if (frac >= 0) {
+    qBar(44, 150, 152, frac, c565(90, 220, 255), c565(200, 250, 255));
+    char b[8]; snprintf(b, sizeof(b), "%d%%", (int)(frac * 100));
+    qTextC(QF_BODY, b, 120, 162, Q_DIM);
+  } else if (small) {
+    String s = qClip(QF_BODY, String(small), 176);
+    qTextC(QF_BODY, s.c_str(), 120, 148, Q_DIM);
+  }
+}
+
+void questEmpty(const char *big, const char *l1, const char *l2) {
+  qBackdrop(mode, 60);
+  qHud();
+  qWindow(20, 168, 200, 86);
+  String b = big; b.toLowerCase(); b.setCharAt(0, toupper(b[0]));
+  qText(QF_TITLE, b.c_str(), 36, 176, Q_GOLD, 2, Q_SHADOW);
+  qText(QF_BODY, l1, 36, 208, Q_WHITE, 2, Q_SHADOW);
+  qText(QF_BODY, l2, 36, 226, Q_WHITE, 2, Q_SHADOW);
+  if ((millis() / 400) % 2) qArrow(204, 240, 0, Q_WHITE);
+}
+
+void drawClockQuest() {
+  qBackdrop(M_CLOCK, 40);
+  qHud();
+  struct tm t;
+  qWindow(18, 74, 204, 132);
+  qPlate("TIME", 120, 66);
+  if (!localNow(t)) {
+    qTextC(QF_BIG, "--:--", 120, 92, Q_WHITE, 2, Q_SHADOW);
+    qTextC(QF_BODY, "Open the app once to sync", 120, 170, Q_DIM);
+    return;
+  }
+  int h = t.tm_hour; if (!use24h) { h %= 12; if (!h) h = 12; }
+  char b[24];
+  snprintf(b, sizeof(b), "%d:%02d", h, t.tm_min);
+  int w = qTextW(QF_BIG, b);
+  bool colon = (millis() / 500) % 2;
+  int x = 120 - w / 2;
+  for (const char *p = b; *p; p++) {
+    char one[2] = {*p, 0};
+    if (*p != ':' || colon) qText(QF_BIG, one, x, 82, Q_WHITE, 2, Q_SHADOW);
+    x += QF_BIG.g[*p - 32].adv * 2;
+  }
+  if (!use24h) qText(QF_BODY, t.tm_hour < 12 ? "AM" : "PM", 120 + w / 2 + 4, 128, Q_GOLD, 2, Q_SHADOW);
+  static const char *DN[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  static const char *MN[12] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+  snprintf(b, sizeof(b), "%s %d %s", DN[t.tm_wday], t.tm_mday, MN[t.tm_mon]);
+  qTextC(QF_BODY, b, 120, 152, Q_WHITE, 2, Q_SHADOW);
+  // seconds as a row of pips, then the part of the day
+  for (int i = 0; i < 30; i++) qRect(36 + i * 6, 176, 4, 4, i * 2 <= t.tm_sec ? Q_GOLD : c565(40, 50, 120));
+  snprintf(b, sizeof(b), "%s  -  day %d", qPeriod(), t.tm_yday + 1);
+  qTextC(QF_BODY, b, 120, 186, Q_DIM);
+  if (npPlaying && npTitle.length()) {
+    String s = qClip(QF_BODY, asciiOnly(npTitle), 150);
+    int sw = qTextW(QF_BODY, s.c_str()) + 40;
+    qWindow(120 - sw / 2, 222, sw, 28, 210);
+    qSprite(QNOTE, QNOTE_W, QNOTE_H, 120 - sw / 2 + 12, 228, false, qLutS);
+    qText(QF_BODY, s.c_str(), 120 - sw / 2 + 28, 228, Q_WHITE, 2, Q_SHADOW);
+  }
+}
+
+void drawMusicQuest() {
+  if (artLoaded && artBuf && FB) {
+    for (int y = 0; y < SCR_H; y += 4) for (int x = 0; x < SCR_W; x += 4) {   // the cover as chunky pixels
+      uint16_t c = artBuf[(y + 1) * SCR_W + x + 1];
+      for (int j = 0; j < 4; j++) { uint16_t *p = FB + (y + j) * SCR_W + x; p[0] = p[1] = p[2] = p[3] = c; }
+    }
+    shadeRows(150, SCR_H, 256, 60);
+  } else qBackdrop(M_MUSIC, 40);
+  qHud();
+  qWindow(12, 178, 216, 88);
+  qPlate(npPlaying ? "NOW PLAYING" : "PAUSED", 120, 170);
+  String title = asciiOnly(npTitle.length() ? npTitle : String("Nothing playing"));
+  String artist = asciiOnly(npArtist.length() || npTitle.length() ? npArtist : String("Play a song on your phone"));
+  int tw = qTextW(QF_TITLE, title.c_str());
+  if (tw <= 196) qTextC(QF_TITLE, title.c_str(), 120, 188, Q_WHITE, 2, Q_SHADOW);
+  else {
+    static int off = 0; off = (off + 2) % (tw + 60);
+    String two = title + "     " + title;
+    // draw clipped by hand: only glyphs inside the window
+    int x = 24 - off;
+    for (const char *p = two.c_str(); *p && x < 216; p++) {
+      int c = (uint8_t)*p; if (c < 32 || c > 126) c = '?';
+      int adv = QF_TITLE.g[c - 32].adv * 2;
+      if (x >= 22 && x + adv <= 218) { char one[2] = {(char)c, 0}; qText(QF_TITLE, one, x, 188, Q_WHITE, 2, Q_SHADOW); }
+      x += adv;
+    }
+  }
+  artist = qClip(QF_BODY, artist, 190);
+  qTextC(QF_BODY, artist.c_str(), 120, 216, Q_GOLD);
+  uint32_t pos = npPosition();
+  qBar(26, 236, 188, npDurMs ? (float)pos / npDurMs : 0, c565(250, 196, 70), c565(255, 240, 170));
+  char b[16];
+  snprintf(b, sizeof(b), "%lu:%02lu", (unsigned long)(pos / 60000), (unsigned long)((pos / 1000) % 60));
+  qText(QF_BODY, b, 26, 248, Q_DIM);
+  if (npDurMs) { snprintf(b, sizeof(b), "%lu:%02lu", (unsigned long)(npDurMs / 60000), (unsigned long)((npDurMs / 1000) % 60)); qText(QF_BODY, b, 214 - qTextW(QF_BODY, b), 248, Q_DIM); }
+  if (millis() < mediaFlashUntil) {
+    qWindow(84, 70, 72, 64);
+    const int cx = 120, cy = 102;
+    if (mediaFlashKind == 0) {
+      if (npPlaying) for (int k = 0; k < 9; k++) qRect(cx - 10 + k * 2, cy - 16 + k * 2, 2, 32 - k * 4, Q_WHITE);
+      else { qRect(cx - 12, cy - 14, 8, 28, Q_WHITE); qRect(cx + 4, cy - 14, 8, 28, Q_WHITE); }
+    } else { qArrow(cx + (mediaFlashKind == 1 ? -8 : 8), cy, mediaFlashKind == 1 ? 1 : -1, Q_WHITE); qArrow(cx + (mediaFlashKind == 1 ? 4 : -4), cy, mediaFlashKind == 1 ? 1 : -1, Q_WHITE); }
+  }
+}
+
+// Jukebox: a JRPG menu. Top: category, rows: songs, bottom: play / stop / skip.
+#define QJ_ROW_Y 112
+#define QJ_ROW_H 24
+#define QJ_ROWS 4
+int qjTop = 0;
+void drawJukeQuest() {
+  qBackdrop(M_JUKE, 30);
+  qHud();
+  qWindow(14, 50, 212, 46);
+  const char *cat = catName(jbCat);
+  qTextC(QF_TITLE, cat, 120, 54, Q_WHITE, 2, Q_SHADOW);
+  int bob = ((millis() / 300) % 2) * 2;
+  qArrow(30 - bob, 73, -1, Q_GOLD); qArrow(210 + bob, 73, 1, Q_GOLD);
+  int16_t ids[24];
+  int n = songsInCat(jbCat, ids, 24);
+  int sel = 0;
+  for (int i = 0; i < n; i++) if (ids[i] == (jbPlaying ? jbSong : jbSelId)) sel = i;
+  if (sel < qjTop) qjTop = sel;
+  if (sel >= qjTop + QJ_ROWS) qjTop = sel - QJ_ROWS + 1;
+  if (qjTop > max(0, n - QJ_ROWS)) qjTop = max(0, n - QJ_ROWS);
+  qWindow(14, 100, 212, QJ_ROWS * QJ_ROW_H + 18, 225);
+  for (int r = 0; r < QJ_ROWS && qjTop + r < n; r++) {
+    int i = qjTop + r, id = ids[i], y = QJ_ROW_Y + r * QJ_ROW_H;
+    bool cur = jbPlaying && id == jbSong;
+    String nm = qClip(QF_BODY, String(songName(id)), 150);
+    if (i == sel) qSprite(QHAND, 9, 7, 24 + ((millis() / 250) % 2) * 2, y + 4, false, qLutS);
+    qText(QF_BODY, nm.c_str(), 46, y + 2, cur ? Q_GOLD : Q_WHITE, 2, Q_SHADOW);
+    if (cur) for (int k = 0; k < 3; k++) { int hh = 4 + (int)(fabsf(sinf(millis() / 120.0f + k)) * 8) & ~1; qRect(196 + k * 6, y + 16 - hh, 4, hh, Q_GOLD); }
+  }
+  if (n > QJ_ROWS) {                                      // scroll marks
+    if (qjTop > 0) qArrow(214, 112, 2, Q_DIM);
+    if (qjTop + QJ_ROWS < n) qArrow(214, 200, 0, Q_DIM);
+  }
+  qWindow(14, 222, 212, 40);
+  if (jbPlaying) {
+    qBar(26, 232, 120, jbProgress(), c565(120, 230, 160), c565(210, 255, 220));
+    qText(QF_BODY, "Stop", 154, 228, Q_WHITE, 2, Q_SHADOW);
+    qText(QF_BODY, "Skip", 190, 228, Q_GOLD, 2, Q_SHADOW);
+    char b[16]; snprintf(b, sizeof(b), "%d queued", jbQLen);
+    qText(QF_BODY, b, 26, 244, Q_DIM);
+  } else {
+    qTextC(QF_BODY, "Tap a song to play it", 120, 232, Q_DIM);
+  }
+}
+void questJukeTap(int x, int y) {
+  int16_t ids[24];
+  int n = songsInCat(jbCat, ids, 24);
+  if (y < 98) { jbCat = (jbCat + catCount() + (x < 120 ? -1 : 1)) % catCount(); qjTop = 0; sfx(1); return; }
+  if (y >= QJ_ROW_Y - 4 && y < QJ_ROW_Y + QJ_ROWS * QJ_ROW_H) {
+    int i = qjTop + (y - QJ_ROW_Y + 4) / QJ_ROW_H;
+    if (x > 200 && n > QJ_ROWS) { qjTop = constrain(qjTop + (y < 150 ? -1 : 1), 0, n - QJ_ROWS); return; }
+    if (i < n) { bool was = jbPlaying; jbSelId = ids[i]; jbEnqueue(ids[i]); toast(was ? "Added to the queue" : "Playing", 800); }
+    return;
+  }
+  if (y >= 218) {
+    if (jbPlaying) { if (x > 180) jbSkip(); else jbStop(); }
+    else jbStartSong(jbSelId);
+  }
+}
+
+void drawPetQuest() {
+  qBackdrop(M_PET, 0);
+  qHud();
+  const char *const *spr = petSpecies == 1 ? GHOST : petSpecies == 2 ? FROG : CAT;
+  float t = millis() / 1000.0f;
+  bool dizzy = millis() < petDizzyUntil;
+  int hop = (int)(fabsf(sinf(t * (petMood > 40 ? 3.2f : 1.4f))) * (petMood > 40 ? 14 : 4)) & ~1;
+  int slide = imuOK ? constrain((int)(tiltX * 28), -24, 24) & ~1 : 0;
+  if (dizzy) slide += (int)(sinf(t * 25) * 6) & ~1;
+  qRectA(120 + slide - 26, 236, 52, 6, c565(10, 10, 30), 100);
+  drawSprite(spr, 96 + slide, 190 - hop, 4, mix565(petColor, COL_BLACK, (uint8_t)(qNight * 90)), (frameNo % 60) < 3 || dizzy);
+  if (dizzy) for (int i = 0; i < 3; i++) { float a = t * 8 + i * 2.09f; qSprite(QCOIN0, 5, 5, 116 + slide + (int)(cosf(a) * 30), 182 - hop + (int)(sinf(a) * 6), false, qLutS); }
+  if (millis() < petHeartsUntil)
+    for (int i = 0; i < 4; i++) {
+      int hx = 50 + i * 44, hy = 176 - (int)((millis() / 20 + i * 17) % 70);
+      qSprite(QHEART, 8, 8, hx, hy, false, qLutS);
+    }
+  String nm = asciiOnly(petName);
+  int w = qTextW(QF_TITLE, nm.c_str()) + 40;
+  qWindow(120 - w / 2, 40, w, 34);
+  qTextC(QF_TITLE, nm.c_str(), 120, 42, Q_WHITE, 2, Q_SHADOW);
+  qWindow(30, 244, 180, 30, 220);
+  int hearts = (petMood + 19) / 20;
+  for (int i = 0; i < 5; i++) {
+    if (i < hearts) qSprite(QHEART, 8, 8, 44 + i * 20, 251, false, qLutS);
+    else { qRect(46 + i * 20, 253, 12, 10, c565(40, 40, 80)); }
+  }
+  qText(QF_BODY, dizzy ? "Dizzy!" : petMood > 70 ? "Happy" : petMood > 35 ? "Chilling" : "Hungry", 146, 250, Q_WHITE, 2, Q_SHADOW);
+}
+
+void drawToyQuest() {
+  qBackdrop(M_TOY, 60);
+  qHud();
+  static const char *TN[3] = {"Oracle", "Dice", "Coin"};
+  uint32_t el = millis() - toyRollAt;
+  bool rolling = toyRollAt && el < 1100;
+  int jx = rolling ? ((int)random(-3, 4)) * 2 : 0, jy = rolling ? ((int)random(-3, 4)) * 2 : 0;
+  qWindow(60, 40, 120, 34);
+  qTextC(QF_TITLE, TN[toyKind % 3], 120, 42, Q_WHITE, 2, Q_SHADOW);
+  int bob = ((millis() / 300) % 2) * 2;
+  qArrow(72 - bob, 57, -1, Q_GOLD); qArrow(168 + bob, 57, 1, Q_GOLD);
+  if (toyKind == 0) {
+    int cx = 120 + jx, cy = 136 + jy;
+    qGlow(cx, cy, 70, c565(120, 200, 255), 120 + (rolling ? 80 : 0));
+    gfx->fillCircle(cx, cy, 40, c565(30, 20, 46));
+    gfx->fillCircle(cx, cy, 37, c565(40, 120, 220));
+    gfx->fillCircle(cx - 4, cy - 4, 30, c565(90, 190, 250));
+    gfx->fillCircle(cx - 12, cy - 14, 8, c565(220, 250, 255));
+    qRect(cx - 30, cy + 34, 60, 8, c565(110, 60, 140)); qRect(cx - 24, cy + 42, 48, 6, c565(70, 36, 100));
+    qWindow(20, 200, 200, 58);
+    const char *ans = rolling ? "The crystal is thinking..." : toyHasResult ? EIGHT[toyResult % EIGHT_N] : (imuOK ? "Shake me for an answer" : "Tap for an answer");
+    String a = ans; a.replace('\n', ' ');
+    if (toyHasResult && !rolling) { a.setCharAt(0, toupper(a[0])); qTextC(QF_TITLE, a.c_str(), 120, 210, Q_GOLD, 2, Q_SHADOW); }
+    else qTextC(QF_BODY, a.c_str(), 120, 220, Q_WHITE, 2, Q_SHADOW);
+  } else if (toyKind == 1) {
+    uint8_t a = rolling ? 1 + random(0, 6) : toyResult, b = rolling ? 1 + random(0, 6) : toyResult2;
+    if (!toyHasResult) { a = 5; b = 2; }
+    for (int d = 0; d < 2; d++) {
+      int x = (d ? 128 - jx : 40 + jx) & ~1, y = (96 + (d ? -jy : jy)) & ~1, s = 72;
+      qRect(x + 4, y + 6, s, s, c565(20, 14, 40));
+      qRect(x, y, s, s, c565(30, 20, 46)); qRect(x + 2, y + 2, s - 4, s - 4, c565(250, 248, 240)); qRect(x + 2, y + s - 8, s - 4, 6, c565(200, 200, 214)); qRect(x + s - 8, y + 2, 6, s - 4, c565(200, 200, 214));
+      static const uint16_t PIPS[7] = {0, 0b000010000, 0b100000001, 0b100010001, 0b101000101, 0b101010101, 0b101101101};
+      uint8_t v = d ? b : a; if (v < 1 || v > 6) v = 1;
+      for (int i = 0; i < 9; i++) if ((PIPS[v] >> (8 - i)) & 1) qRect(x + 10 + (i % 3) * 20, y + 10 + (i / 3) * 20, 12, 12, v == 1 ? c565(206, 48, 62) : c565(30, 20, 46));
+    }
+    qWindow(40, 200, 160, 52);
+    char b2[16];
+    if (toyHasResult && !rolling) { snprintf(b2, sizeof(b2), "Total %d", toyResult + toyResult2); qTextC(QF_TITLE, b2, 120, 208, Q_GOLD, 2, Q_SHADOW); }
+    else qTextC(QF_BODY, rolling ? "Rolling..." : imuOK ? "Shake to roll" : "Tap to roll", 120, 216, Q_WHITE, 2, Q_SHADOW);
+  } else {
+    int cy = 140;
+    if (rolling) {
+      int rx = max(4, (int)(fabsf(sinf(el * 0.02f)) * 46)) & ~1;
+      cy -= (int)(sinf(el * 3.14159f / 1100.0f) * 50) & ~1;
+      gfx->fillEllipse(120, cy, rx, 46, c565(250, 210, 90));
+    } else {
+      qGlow(120, cy, 70, c565(255, 210, 90), 80);
+      gfx->fillCircle(120, cy, 48, c565(142, 90, 30)); gfx->fillCircle(120, cy, 44, c565(210, 150, 42)); gfx->fillCircle(118, cy - 2, 38, c565(250, 210, 90));
+      qTextC(QF_TITLE, toyHasResult ? (toyResult ? "T" : "H") : "?", 120, cy - 30, c565(142, 90, 30), 4);
+    }
+    qWindow(40, 210, 160, 44);
+    qTextC(toyHasResult && !rolling ? QF_TITLE : QF_BODY, rolling ? "Flipping..." : toyHasResult ? (toyResult ? "Tails" : "Heads") : (imuOK ? "Shake to flip" : "Tap to flip"), 120, toyHasResult && !rolling ? 214 : 222, toyHasResult && !rolling ? Q_GOLD : Q_WHITE, 2, Q_SHADOW);
+  }
+}
+
+// ID card: a character status screen
+void drawCardQuest() {
+  qBackdrop(M_CARD, 70);
+  qHud();
+  qWindow(14, 44, 212, 222);
+  qPlate("STATUS", 120, 36);
+  qRect(26, 58, 52, 64, c565(20, 16, 40)); qRect(28, 60, 48, 60, c565(70, 110, 190));
+  qRect(28, 104, 48, 16, c565(60, 140, 70));
+  qHero(36, 64, (millis() / 600) % 2, false, (frameNo % 110) < 4);
+  String name = asciiOnly(cardName), sub = asciiOnly(cardSub);
+  name = qClip(QF_TITLE, name, 130);
+  qText(QF_TITLE, name.c_str(), 88, 56, Q_WHITE, 2, Q_SHADOW);
+  sub = qClip(QF_BODY, sub, 130);
+  qText(QF_BODY, sub.c_str(), 88, 84, Q_GOLD, 2, Q_SHADOW);
+  char b[24];
+  int lv = 1 + min(98, (int)(stepsToday / 1000));
+  snprintf(b, sizeof(b), "LV %d", lv);
+  qText(QF_BODY, b, 88, 102, Q_WHITE, 2, Q_SHADOW);
+  // HP = battery, EXP = steps toward the next level
+  qText(QF_BODY, "HP", 28, 132, Q_GOLD, 2, Q_SHADOW);
+  qBar(56, 134, 112, batPct / 100.0f, batPct > 30 ? c565(110, 220, 110) : c565(240, 90, 80), c565(220, 255, 210));
+  snprintf(b, sizeof(b), "%d/100", batPct); qText(QF_BODY, b, 174, 132, Q_WHITE, 2, Q_SHADOW);
+  qText(QF_BODY, "EXP", 28, 152, Q_GOLD, 2, Q_SHADOW);
+  qBar(56, 154, 112, (stepsToday % 1000) / 1000.0f, c565(110, 180, 255), c565(220, 240, 255));
+  snprintf(b, sizeof(b), "%lu", (unsigned long)stepsToday); qText(QF_BODY, b, 174, 152, Q_WHITE, 2, Q_SHADOW);
+  qText(QF_BODY, "LINK", 28, 172, Q_GOLD, 2, Q_SHADOW);
+  qText(QF_BODY, bleConnected ? "Connected" : "Offline", 70, 172, bleConnected ? c565(150, 240, 255) : Q_DIM, 2, Q_SHADOW);
+  // the NFC spot: rings pulse out of a crest
+  int phase = (frameNo / 4) % 4;
+  for (int i = 0; i < 3; i++) gfx->drawCircle(120, 220, 10 + i * 8, i < phase ? Q_GOLD : c565(60, 70, 140));
+  qSprite(QGEM, 8, 8, 112, 212, false, qLutS);
+  qTextC(QF_BODY, "Tap a phone here", 120, 244, Q_WHITE, 2, Q_SHADOW);
+}
+
+// Charging: the hero naps by the campfire
+void drawChargeQuest() {
+  if (!questInit()) { gfx->fillScreen(c565(20, 30, 90)); return; }
+  float cam = qCamOf(M_JUKE);
+  qScene(cam, false, true);
+  int sx, sy;
+  if (qOnScreen(cam, QD_FIRE[0], QD_FIRE[1], sx, sy)) {
+    qSprite(QSLEEP, QSLEEP_W, QSLEEP_H, sx + 18, sy - QSLEEP_H * 2 + 12, false, qLutS);
+    for (int i = 0; i < 3; i++) {
+      float p = fmodf(millis() / 1600.0f + i / 3.0f, 1.0f);
+      qText(QF_TITLE, "z", sx + 30 + (int)(p * 24) + i * 2, sy - 34 - (int)(p * 40), Q_WHITE, 2, Q_SHADOW);
+    }
+  }
+  qHud();
+  qWindow(20, 52, 200, 96);
+  qPlate(charging ? (batPct >= 99 ? "FULLY RESTED" : "RESTING") : "ON THE ROAD", 120, 44);
+  char b[16]; snprintf(b, sizeof(b), "%d%%", batPct);
+  qTextC(QF_BIG, b, 120, 58, charging ? c565(170, 255, 140) : Q_WHITE, 2, Q_SHADOW);
+  float f = batPct / 100.0f;
+  qBar(36, 114, 168, f, charging ? c565(110, 220, 110) : c565(250, 196, 70), c565(220, 255, 210));
+  if (charging) { int sp = (int)((millis() / 12) % 168) & ~1; if (sp < (int)(164 * f)) qRect(38 + sp, 116, 4, 6, c565(255, 255, 255)); }
+  snprintf(b, sizeof(b), "%.2fV", batVolts);
+  qTextC(QF_BODY, b, 120, 126, Q_DIM);
+}
+
+void drawAlarmQuest() {
+  bool flash = (millis() / 300) % 2;
+  if (flash) qRectA(0, 0, SCR_W, SCR_H, c565(255, 255, 255), 60);
+  qWindow(28, 84, 184, 112);
+  qTextC(QF_BIG, "!", 120, 86, Q_GOLD, 2, Q_SHADOW);
+  qTextC(QF_TITLE, "Time's up!", 120, 140, Q_WHITE, 2, Q_SHADOW);
+  qTextC(QF_BODY, "Tap to stop", 120, 168, Q_DIM);
+}
+
+// title screen while it boots
+void questBoot() {
+  questInit();
+  qLightUpdate(true);
+  questPlace(qMod(qLoc, QW_NLOC));
+  qScene(qCam, false);
+  qRectA(0, 0, SCR_W, SCR_H, c565(10, 10, 40), 70);
+  qTextC(QF_TITLE, "Larp Charm", 120, 96, Q_GOLD, 3, Q_SHADOW);
+  qTextC(QF_BODY, "A pocket-sized quest", 120, 150, Q_WHITE, 2, Q_SHADOW);
+  qTextC(QF_BODY, "Press start", 120, 220, Q_WHITE, 2, Q_SHADOW);
+}
 // ───────────── Screen effects ─────────────
 void scanlines() {
   if (!FB) return;
@@ -2972,13 +4107,14 @@ void drawScene() {
     case M_JUKE:  drawJuke();  break;
     case M_TORCH: drawTorch(); break;
     case M_CHARGE: drawCharge(); break;
-    default:      if (skin) drawAeroHome(); else drawDeck(); break;
+    default:      if (skin == SKIN_QUEST) drawQuestHome(); else if (skin) drawAeroHome(); else drawDeck(); break;
   }
 }
 
 void render() {
   updateAccent();
   drawScene();
+  if (skin == SKIN_QUEST) questPost();
   if (mode == M_CLOCK || mode == M_PET || mode == M_TOY || mode == M_CARD) drawTicker();
   bool fx = !skin && fxOn;
   if (fx && mode != M_PHOTO && mode != M_CLIP && mode != M_MUSIC && mode != M_TORCH) scanlines();
@@ -3049,7 +4185,7 @@ void aeroZoom(int oi, bool opening) {
 }
 
 void openModule(int m) {
-  if (mode == M_DECK) { sfx(1); if (skin) aeroZoom(orbOfMode(m), true); else zoomAnim(tileOfMode(m), true); }
+  if (mode == M_DECK) { sfx(1); if (skin == SKIN_QUEST) questTransitionOut(); else if (skin) aeroZoom(orbOfMode(m), true); else zoomAnim(tileOfMode(m), true); }
   setMode(m);
   lastFrame = 0;
 }
@@ -3059,7 +4195,15 @@ void closeModule() {
   if (mode == M_CHARGE) { setMode(chargeReturn == M_CHARGE ? M_DECK : chargeReturn); lastFrame = 0; return; }
   int ti = tileOfMode(mode), oi = orbOfMode(mode);
   sfx(1);
-  if (skin && oi >= 0) orbitFocus(oi, true);
+  if (skin == SKIN_QUEST) {
+    int ql = qLocOfMode(mode);
+    questTransitionOut();
+    if (ql >= 0) questPlace(qLoc - qMod(qLoc, QW_NLOC) + ql);
+    setMode(M_DECK);
+    lastFrame = 0;
+    return;
+  }
+  if (skin == SKIN_AERO && oi >= 0) orbitFocus(oi, true);
   setMode(M_DECK);
   updateAccent();
   drawScene();
@@ -3389,8 +4533,8 @@ void handlePacket(const uint8_t *d, uint16_t n) {
 
     case CMD_SKIN:
       if (len >= 1) {
-        if (len >= 2 && p[1] % AERO_VARS != aeroVar) { aeroVar = p[1] % AERO_VARS; prefs.putUChar("avar", aeroVar); if ((p[0] & 1) == skin) toast(AERO_NAMES[aeroVar], 900); }
-        if ((p[0] & 1) != skin) setSkin(p[0] & 1);
+        if (len >= 2 && p[1] % AERO_VARS != aeroVar) { aeroVar = p[1] % AERO_VARS; prefs.putUChar("avar", aeroVar); if ((p[0] % SKIN_COUNT) == skin) toast(AERO_NAMES[aeroVar], 900); }
+        if ((p[0] % SKIN_COUNT) != skin) setSkin(p[0] % SKIN_COUNT);
         sendStatus();
       }
       break;
@@ -3560,12 +4704,13 @@ void cycleAero(int dir) {
 }
 
 void setSkin(uint8_t s) {
-  skin = s % 2;
+  skin = s % SKIN_COUNT;
+  if (skin == SKIN_QUEST && questInit()) { qLightUpdate(true); int l = qLocOfMode(mode); questPlace(l >= 0 ? l : qMod(qLoc, QW_NLOC)); }
   prefs.putUChar("skin", skin);
   if (skin == SKIN_AERO) { orbitFocus(max(0, orbOfMode(mode)), true); buildOrbSprites(); buildHomeBase(); }
   glitchFrames = skin == SKIN_DECK ? 5 : 0;
   snapAccent();
-  toast(skin == SKIN_AERO ? "Aero" : "Deck", 900);
+  toast(skin == SKIN_QUEST ? "Quest" : skin == SKIN_AERO ? "Aero" : "Deck", 900);
   sfx(2);
   lastFrame = 0;
 }
@@ -3580,6 +4725,7 @@ void onSwipe(int dir) {
   if (swapSwipe) dir = -dir;
   switch (mode) {
     case M_DECK:
+      if (skin == SKIN_QUEST) { questGo(dir); break; }
       if (skin == SKIN_DECK) {
         theme = (theme + THEME_COUNT + dir) % THEME_COUNT;
         prefs.putUChar("theme", theme);
@@ -3636,6 +4782,13 @@ void onTap(bool dbl) {
   sfx(0);
   switch (mode) {
     case M_DECK:
+      if (skin == SKIN_QUEST) {
+        if (qWalkAt) questGo(tch.x0 < 120 ? -1 : 1);
+        else if (tch.x0 < 66) questGo(-1);
+        else if (tch.x0 > 174) questGo(1);
+        else questEnter();
+        break;
+      }
       if (skin == SKIN_DECK) {
         int ti = tileAt(tch.x0, tch.y0);
         if (ti >= 0) openModule(TILE_MODE[ti]);
@@ -3686,6 +4839,7 @@ void onTap(bool dbl) {
       sfx(4);
       break;
     case M_JUKE:
+      if (skin == SKIN_QUEST) { questJukeTap(tch.x0, tch.y0); break; }
       if (skin == SKIN_AERO) {
         int show = (jbPlaying && millis() > jbSelUntil) ? jbSong : jbSelId;
         if (tch.y0 < 148) { if (jbPlaying) jbStop(); else jbStartSong(jbSelId); }
@@ -3714,6 +4868,8 @@ void onShake() {
   touchActivity();
   switch (mode) {
     case M_DECK:
+      if (skin == SKIN_QUEST) { questJump(); break; }
+      // fall through
     case M_CLOCK: if (skin == SKIN_AERO) cycleAero(1); else cycleBg(1); break;
     case M_PET:
       petDizzyUntil = millis() + 3000;
@@ -3770,7 +4926,7 @@ void handleTouch() {
     if (abs(dy) >= SWIPE_PX && abs(dy) > abs(dx)) { tch.consumed = true; onVSwipe(dy < 0 ? 1 : -1); return; }
     if (now - tch.t0 > LONGPRESS_MS && abs(dx) < TAP_PX && abs(dy) < TAP_PX) {
       tch.consumed = true;
-      if (mode == M_DECK) setSkin(skin ^ 1);                     // press and hold the home screen: switch look
+      if (mode == M_DECK) setSkin((skin + 1) % SKIN_COUNT);                     // press and hold the home screen: switch look
       else if (mode == M_CARD) closeModule();
       else openModule(M_CARD);                                    // anywhere else: the ID card
     }
@@ -3962,7 +5118,10 @@ void setup() {
   // boot log: each line is a real check
   FB = gfx->getFramebuffer();
   snapAccent();
-  if (skin) {
+  if (skin == SKIN_QUEST) {
+    gfx->fillScreen(c565(14, 18, 56));
+    gfx->flush();
+  } else if (skin) {
     verticalGradient(c565(30, 120, 230), c565(190, 236, 255));
     aaTextC(F_L, "Larp Charm", 120, 150, COL_WHITE, true);
     gfx->flush();
@@ -4020,7 +5179,8 @@ void setup() {
   snprintf(pw, sizeof(pw), "%d%% %.2fV", batPct, batVolts);
   bootLine("power", pw, batPct > 15);
 
-  if (skin) {
+  if (skin == SKIN_QUEST) questBoot();
+  else if (skin) {
     buildOrbSprites();
     buildHomeBase();
     aeroBackdrop();
@@ -4034,7 +5194,8 @@ void setup() {
   lastInteraction = millis();
   if (charging) { chargeReturn = mode; setMode(M_CHARGE, false); }
   else setMode(mode, false);
-  if (skin) orbitFocus(max(0, orbOfMode(chargeReturn)), true);
+  if (skin == SKIN_AERO) orbitFocus(max(0, orbOfMode(chargeReturn)), true);
+  if (skin == SKIN_QUEST) { int l = qLocOfMode(mode); if (l >= 0) questPlace(l); }
   glitchFrames = 5;
 }
 
@@ -4096,7 +5257,7 @@ void loop() {
   }
 
   uint32_t interval = (xferActive && xferKind != 3) ? 150 : 33;
-  if (mode == M_DECK && skin && orbitMoving()) interval = 15;      // spin as smoothly as the screen allows
+  if (mode == M_DECK && skin == SKIN_AERO && orbitMoving()) interval = 15;      // spin as smoothly as the screen allows
   if (millis() - lastFrame >= interval) {
     lastFrame = millis();
     render();
