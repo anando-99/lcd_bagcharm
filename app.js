@@ -638,7 +638,7 @@ function setSkinUi(sk, av){
   document.querySelectorAll('#skins .lookcard').forEach(b => b.classList.toggle('on', +b.dataset.v === sk));
   document.querySelectorAll('#aeroSeg button').forEach(b => b.classList.toggle('on', +b.dataset.v === av));
   $('aeroStyles').classList.toggle('hidden', sk !== 1);
-  document.documentElement.style.setProperty('--acc', sk === 1 ? AERO_ACC[av] : THEMES[ui.theme]);
+  document.documentElement.style.setProperty('--acc', sk === 1 ? AERO_ACC[av] : sk === 2 ? '#46D6FF' : THEMES[ui.theme]);
   localStorage.setItem('o_skin', sk); localStorage.setItem('o_aero', av);
 }
 function sendSkin(){ if (window.kickCharm) kickCharm(3); if (rxChar) write(packet(CMD.SKIN, [ui.skin, ui.aero])).catch(() => {}); }

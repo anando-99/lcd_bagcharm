@@ -474,6 +474,106 @@
     else { NT(playing ? 'Tap here to queue the' : 'Tap the disc to play,', 120, 232, 14, INK, 'center', false, 700); NT(playing ? 'song shown above' : 'or here to queue it', 120, 250, 14, INK, 'center', false, 700); }
   }
 
+  // ── the Tide look (mirrors firmware 6.0) ──
+  const TINK = '#041246', TNAVY = '#061e6e', TCYAN = '#46d6ff', TRED = '#ff2440', TYEL = '#ffd628';
+  const ANT = 'Anton, Impact, "Arial Narrow", sans-serif';
+  const TTITLE = { 0: 'CLOCK', 1: 'MESSAGE', 2: 'PHOTO', 3: 'CLIPS', 4: 'MUSIC', 5: 'PET', 6: 'DICE', 7: 'ID CARD', 8: 'HOME', 9: 'EYES', 10: 'JUKEBOX', 11: 'TORCH', 12: 'POWER' };
+  const TM = [[0, 'CLOCK'], [4, 'MUSIC'], [9, 'EYES'], [10, 'JUKEBOX'], [5, 'PET'], [6, 'DICE'], [1, 'MESSAGE'], [2, 'PHOTO'], [3, 'CLIPS'], [7, 'ID CARD'], [11, 'TORCH']];
+  const tm = { pos: 0, vel: 0, sel: 0, rows: [] };
+  let tideCache = null, tideHidden = null;
+  function tideBg() {
+    const hidden = new Date().getHours() === 0;
+    if (tideCache && tideHidden === hidden) return tideCache;
+    const o = document.createElement('canvas'); o.width = W; o.height = H; const x = o.getContext('2d');
+    x.fillStyle = lg(x, 0, H, hidden ? [[0, '#3cc070'], [0.45, '#0c6a3a'], [1, '#021a10']] : [[0, '#2880ff'], [0.45, '#0a3ac8'], [1, '#020e3c']]); x.fillRect(0, 0, W, H);
+    x.save(); x.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 6; i++) { x.save(); x.translate(250 - i * 40, -20); x.rotate(0.45); x.fillStyle = lg(x, 0, 260, [[0, 'rgba(255,255,255,.2)'], [1, 'rgba(255,255,255,0)']]); x.fillRect(-5 - (i % 3) * 3, 0, 10 + (i % 3) * 7, 320); x.restore(); }
+    x.restore();
+    x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1;
+    for (let y = 279; y > 120; y -= 9) { const sx = 120 - (279 - y) * 0.55; x.beginPath(); x.moveTo(sx, y + 0.5); x.lineTo(sx + 70, y + 0.5); x.stroke(); }
+    tideHidden = hidden; return (tideCache = o);
+  }
+  function tideBackdrop() {
+    c.drawImage(tideBg(), 0, 0);
+    c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 1;
+    for (let k = 0; k < 3; k++) { c.beginPath(); for (let x = 0; x <= W; x += 4) { const y = 8 + k * 11 + Math.sin(x * 0.05 + frame * 0.06 + k * 2) * 3; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+    if (tideHidden) orb(186, 52, 30, '#fafad2');
+    for (let i = 0; i < 9; i++) { const b = bubs[i]; b.y -= b.v * 0.8; if (b.y < -b.r - 4) { b.y = H + b.r + Math.random() * 60; b.x = 10 + Math.random() * 220; } bubble(b.x, b.y, b.r * 0.6); }
+  }
+  const para = (x, y, w, h, lean, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(x + lean, y); c.lineTo(x + w + lean, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.fill(); };
+  function slashT(x, y, w, h) { para(x, y + 2, w, h - 4, h / 2, TRED); c.beginPath(); c.moveTo(x + w + h / 2 - 2, y + 2); c.lineTo(x + w + h / 2 + 14, y - 3); c.lineTo(x + w + 4, y + h / 2); c.fill(); }
+  function AT(s, x, y, px, col, shadow = true, alpha = 1, align = 'left') {
+    c.save(); c.globalAlpha = alpha; c.font = `italic 400 ${px}px ${ANT}`; c.textAlign = align; c.textBaseline = 'alphabetic';
+    if (shadow) { c.fillStyle = TINK; c.fillText(s, x + 2, y + 2); } c.fillStyle = col; c.fillText(s, x, y); c.restore();
+  }
+  const AW = (s, px) => { c.font = `italic 400 ${px}px ${ANT}`; return c.measureText(s).width; };
+  function gauge(x, y, w, f, col) { para(x, y, w, 5, 3, TINK); para(x + 1, y + 1, Math.max(0, (w - 2) * Math.min(1, f)), 3, 2, col); }
+  function tideTop(showTime) {
+    const t = TTITLE[shownMode] || 'HOME', tw = AW(t, 25);
+    para(14, 4, tw + 26, 26, 8, TINK); R(20, 28, tw + 16, 2, TRED); AT(t, 26, 26, 25, '#fff', false);
+    const b = (ui.bat || 76) + '%'; AT(b, 214, 20, 16, ui.charging ? '#78ff96' : '#fff', true, 1, 'right');
+    if (showTime) { const d = new Date(); AT(d.getHours() + ':' + pad(d.getMinutes()), 168, 20, 16, TCYAN, true, 1, 'right'); }
+  }
+  function tideHome() {
+    const target = (() => { let t = tm.sel; while (t - tm.pos > 5.5) t -= 11; while (tm.pos - t > 5.5) t += 11; return t; })();
+    tm.vel += (target - tm.pos) * 0.24; tm.vel *= 0.48; tm.pos += tm.vel;
+    tideBackdrop();
+    c.save(); c.translate(46, 272); c.rotate(-Math.PI / 2); AT(TM[tm.sel][1], 0, 0, 40, '#fff', false, 0.28); c.restore();
+    para(10, 10, 116, 70, 6, '#fff'); para(10, 76, 112, 4, 2, TRED);
+    const d = new Date(); AT(d.getHours() + ':' + pad(d.getMinutes()), 20, 56, 40, TINK, false); AT(DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()], 20, 73, 16, TNAVY, false);
+    const steps = ((($('stepCount') || {}).textContent || '').replace(/[^0-9]/g, '') || '0');
+    [['PWR', (ui.bat || 76) + '%', (ui.bat || 76) / 100, TCYAN], ['STEP', steps, Math.min(1, +steps / 8000), TYEL], ['PET', '70', 0.7, '#ff78be']].forEach(([k, v, f, col], i) => {
+      const x = 140 + i * 4, y = 12 + i * 23; para(x, y, 80, 20, 5, TINK); R(x + 1, y + 1, 3, 18, col);
+      AT(k, x + 10, y + 15, 16, TCYAN, false); AT(v, x + 74, y + 15, 16, '#fff', false, 1, 'right'); gauge(x + 8, y + 19, 64, f, col);
+    });
+    const base = Math.floor(tm.pos); tm.rows = [];
+    for (let k = -4; k <= 4; k++) {
+      const idx = (((base + k) % 11) + 11) % 11, dd = (base + k) - tm.pos, ad = Math.abs(dd);
+      const y = 176 + dd * 27 + (dd > 0 ? 12 * Math.min(1, dd) : 0), x = 70 + dd * 9;
+      tm.rows.push({ idx, y });
+      if (y < 96 || y > 284) continue;
+      if (ad < 0.5) { const w = AW(TM[idx][1], 40); slashT(x - 10, y - 34, w + 22, 38); R(x - 4, y + 4, w + 30, 3, '#fff'); AT(TM[idx][1], x, y, 40, '#fff'); }
+      else AT(TM[idx][1], x, y, 25, ad < 1.5 ? '#a8e8ff' : TCYAN, true, Math.max(0.24, 1 - ad * 0.22));
+    }
+  }
+  function tideClock() {
+    tideBackdrop(); tideTop(false);
+    const d = new Date(), s = d.getHours() + ':' + pad(d.getMinutes()), w = AW(s, 74), x = (W - w) / 2 - 6;
+    AT(s, x + 5, 142, 74, TCYAN, false, 0.55); slashT(x - 10, 140, w + 20, 8); AT(s, x, 136, 74, '#fff', false);
+    AT(DAYS[d.getDay()] + '  ' + d.getDate() + '  ' + MON[d.getMonth()], 30, 182, 25, '#fff');
+    para(30, 196, 150, 6, 4, TINK); para(31, 197, 148 * d.getSeconds() / 59, 4, 3, TCYAN);
+    const ph = (((Date.now() / 1000 - 947182440) / 86400) % 29.530588853) / 29.530588853, k = Math.cos(ph * Math.PI * 2);
+    c.fillStyle = '#f0f4ff'; c.beginPath(); c.arc(196, 238, 18, 0, 7); c.fill(); c.fillStyle = TINK;
+    for (let y = -18; y <= 18; y++) { const ww = Math.sqrt(324 - y * y), t = ww * k; if (ph < 0.5) c.fillRect(196 - ww, 238 + y, ww + t, 1); else c.fillRect(196 - t, 238 + y, ww + t, 1); }
+    AT('MOON', 152, 244, 16, TCYAN, false);
+  }
+  function tideMusic() {
+    const s = song();
+    if (ui.artReady) c.drawImage($('artCv'), 0, 0); else { tideBackdrop(); orb(120, 110, 54, TNAVY); }
+    tideTop(true); para(-10, 176, 270, 110, 28, TINK); R(0, 176, W, 3, TRED);
+    AT((s.title || 'NOTHING PLAYING').toUpperCase().slice(0, 16), 18, 220, 40, '#fff', false);
+    AT((s.artist || '').toUpperCase(), 20, 240, 16, TCYAN, false); gauge(20, 248, 200, s.title ? ((frame / 8) % 150) / 200 + 0.2 : 0, TCYAN);
+    AT(ui.playing ? '<<   PAUSE   >>' : '<<   PLAY   >>', 84, 272, 16, TCYAN, false);
+  }
+  function tideCharge() {
+    tideBackdrop(); tideTop(true);
+    const p = (ui.bat || 76) + '%', w = AW(p, 74); AT(p, (W - w) / 2 + 5, 136, 74, TCYAN, false, 0.55); AT(p, (W - w) / 2, 130, 74, '#fff', false);
+    para(24, 150, 192, 34, 12, TINK); para(27, 153, 186 * (ui.bat || 76) / 100, 28, 10, '#5ae682');
+    slashT(28, 196, 140, 32); AT('CHARGING', 36, 226, 40, '#fff', false);
+  }
+
+  function tideJuke() {
+    tideBackdrop(); tideTop(true);
+    const cat = +(localStorage.getItem('o_songcat') || 0), playing = ui.jbSong >= 0 ? ui.jbSong : (window.previewNotes ? window.previewNotes.song : -1);
+    para(10, 32, 220, 16, 5, TINK); AT(((window.SONG_CATS || [])[cat] || '').toUpperCase(), 24, 46, 16, TCYAN, false); AT('<  >', 196, 46, 16, '#fff', false);
+    (window.SONGS || []).map((sg, i) => [sg, i]).filter(([sg]) => sg.cat === cat).forEach(([sg, i], k) => {
+      const y = 50 + k * 17, nm = sg.name.toUpperCase(); if (i === playing) slashT(16, y + 1, AW(nm, 16) + 14, 15);
+      AT(nm, 22 + k * 2, y + 14, 16, i === playing ? '#fff' : '#bfeaff', false);
+    });
+    para(6, 192, 232, 60, 12, TINK); R(10, 250, 220, 2, TRED); AT(playing >= 0 ? 'E5' : '--', 22, 234, 40, playing >= 0 ? '#fff' : TCYAN, false);
+    if (playing >= 0) for (let i = 0; i < 20; i++) { const h = 4 + Math.abs(Math.sin(i * 1.7 + frame * 0.2)) * 24; para(100 + i * 6, 228 - h, 4, h, 2, TCYAN); }
+    AT(playing >= 0 ? 'STOP           SKIP >' : 'TAP A SONG', 120, 272, 16, '#fff', false);
+  }
   // ── eyes ──
   const NEU = { w: 62, h: 74, rad: 18, lidT: 0, slope: 0, lidB: 0 };
   const EX = [{}, { lidB: 0.5 }, { lidB: 0.62, h: 66 }, { lidT: 0.3, slope: 0.42, h: 66 }, { lidT: 0.36, slope: -0.55, h: 64 }, { w: 70, h: 86, rad: 33 }, { lidT: 0.62, slope: 0.12 },
@@ -537,15 +637,20 @@
     TC('CHARGING  4.05V', 244, 1, '#fff');
   }
   const scenes = { 0: clock, 1: text, 2: photo, 3: clip, 4: music, 5: pet, 6: toy, 7: card, 8: deck, 9: eyes, 10: jukeDeck, 11: torch, 12: chargeDeck };
+  const tideScenes = { 0: tideClock, 4: tideMusic, 8: tideHome, 9: eyes, 10: tideJuke, 11: torch, 12: tideCharge };
   const aeroScenes = { 0: aeroClock, 4: aeroMusic, 5: aeroPet, 6: aeroToy, 7: aeroCard, 8: aeroHome, 9: eyes, 10: aeroJuke, 11: torch, 12: aeroCharge };
 
   // ── tap a block to open it, tap again to go back ──
   // Aero: drag sideways to spin the ring
   let drag = null;
-  cv.addEventListener('pointerdown', e => { drag = { x0: e.clientX, x: e.clientX, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+  cv.addEventListener('pointerdown', e => { drag = { x0: e.clientX, x: e.clientX, y0: e.clientY, y: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
   cv.addEventListener('pointermove', e => {
     if (!drag) return;
     if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
+    if (ui.skin === 2 && shownMode === 8 && drag.y !== undefined && Math.abs(e.clientY - drag.y0) > 6) {
+      drag.moved = true; const d = (drag.y - e.clientY) * H / cv.getBoundingClientRect().height / 27; tm.pos += d; tm.sel = ((Math.round(tm.pos) % 11) + 11) % 11;
+    }
+    drag.y = e.clientY;
     if (drag.moved && ui.skin === 1 && shownMode === 8) { const d = (e.clientX - drag.x) * W / cv.getBoundingClientRect().width * 0.012; orbit.a += d; orbit.v = d; orbit.drag = true; orbit.goal = null; }
     drag.x = e.clientX;
   });
@@ -554,6 +659,13 @@
   function tapAt(e) {
     const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
     if (ui.mode !== 8) return window.charmGoto(8);
+    if (ui.skin === 2) {
+      if (y < 96) return window.charmGoto(0);
+      let best = null, bd = 999; for (const r of tm.rows) { const dd = Math.abs(y - (r.y - 12)); if (r.y >= 96 && dd < bd) { bd = dd; best = r.idx; } }
+      if (best === tm.sel || best == null) return window.charmGoto(TM[tm.sel][0]);
+      if (bd < 18) tm.sel = best;
+      return;
+    }
     if (ui.skin === 1) {
       for (const it of [...orbit.pos].reverse()) if ((x - it.x) ** 2 + (y - it.y) ** 2 <= (it.r + 5) ** 2) { if (it.i === orbit.front && orbit.goal == null) return window.charmGoto(ORB[it.i][0]); return orbitFocus(it.i, false); }
       if (y < 128) return window.charmGoto(0);
@@ -569,12 +681,15 @@
     rx += (trx - rx) * 0.08; ry += (tryy - ry) * 0.08; tiltX = ry; tiltY = 0.4 + rx * 0.6;
     if (!calm) rig.style.transform = `rotateX(${(-rx * 9).toFixed(2)}deg) rotateY(${(ry * 13).toFixed(2)}deg)`;
     const s = song(), [r, g, b] = rgb(val('mColor') || '#f472b6'), mx = Math.max(r, g, b);
-    ACC = ui.playing && s.title && mx >= 40 ? `rgb(${r * 255 / mx | 0},${g * 255 / mx | 0},${b * 255 / mx | 0})` : ui.skin === 1 ? AERO_ACC[ui.aero] : THEMES[ui.theme] || THEMES[0];
+    ACC = ui.playing && s.title && mx >= 40 ? `rgb(${r * 255 / mx | 0},${g * 255 / mx | 0},${b * 255 / mx | 0})` : ui.skin === 1 ? AERO_ACC[ui.aero] : ui.skin === 2 ? '#46d6ff' : THEMES[ui.theme] || THEMES[0];
     if (ACC[0] !== '#') ACC = '#' + ACC.match(/\d+/g).map(v => (+v).toString(16).padStart(2, '0')).join('');
 
     if (ui.mode !== shownMode && !zoom) {
       const opening = shownMode === 8, ti = TMODE.indexOf(opening ? ui.mode : shownMode);
-      if (ui.skin === 1) {
+      if (ui.skin === 2) {
+        if (!opening) { const ti2 = TM.findIndex(t => t[0] === shownMode); if (ti2 >= 0) { tm.sel = ti2; tm.pos = ti2; } }
+        if ((opening || ui.mode === 8) && !calm) zoom = { tide: true, s: 0, opening, to: ui.mode }; else shownMode = ui.mode;
+      } else if (ui.skin === 1) {
         const oi = ORB.findIndex(o => o[0] === (opening ? ui.mode : shownMode));
         if (!opening && oi >= 0) orbitFocus(oi, true);
         const it = orbit.pos.find(p => p.i === oi);
@@ -584,7 +699,13 @@
     }
     c.save(); c.globalAlpha = 1;
     try {
-      if (zoom && zoom.aero) {
+      if (zoom && zoom.tide) {
+        tideHome();
+        zoom.s++; let t = zoom.s / 7; t = 1 - (1 - t) * (1 - t);
+        const edge = (zoom.opening ? t : 1 - t) * 420 - 100;
+        para(-120, 0, edge + 120, H, 90, TINK); para(edge - 6, 0, 14, H, 90, TRED); para(edge - 40, 0, 10, H, 90, TCYAN);
+        if (zoom.s >= 7) { shownMode = zoom.to; zoom = null; }
+      } else if (zoom && zoom.aero) {
         aeroHome(); zoom.s++;
         let t = zoom.s / 7; t = 1 - (1 - t) * (1 - t); if (!zoom.opening) t = 1 - t;
         const rr = zoom.r + (200 - zoom.r) * t, x = zoom.x + (120 - zoom.x) * t, y = zoom.y + (140 - zoom.y) * t;
@@ -597,18 +718,21 @@
         R(x, y, w, h, '#000'); c.strokeStyle = ACC; c.lineWidth = 2; c.strokeRect(x + 1, y + 1, w - 2, h - 2);
         if (zoom.s >= 7) { shownMode = zoom.to; zoom = null; glitch = Math.max(glitch, 3); }
       } else {
-        if (ui.skin === 1) {
+        if (ui.skin === 2) {
+          const f = tideScenes[shownMode];
+          if (f) f(); else { (scenes[shownMode] || deck)(); tideTop(true); }
+        } else if (ui.skin === 1) {
           const f = aeroScenes[shownMode];
           if (f) f(); else { (scenes[shownMode] || deck)(); aeroTop(true); }
         } else {
           (scenes[shownMode] || deck)();
           if ([0, 5, 6, 7].includes(shownMode)) ticker();
         }
-        if (ui.skin !== 1 && ![2, 3, 4, 11].includes(shownMode) && $('optFx').checked) { c.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 1; y < H; y += 2) c.fillRect(0, y, W, 1); }
+        if (ui.skin === 0 && ![2, 3, 4, 11].includes(shownMode) && $('optFx').checked) { c.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 1; y < H; y += 2) c.fillRect(0, y, W, 1); }
       }
     } catch (e) { /* one bad frame must not stop the preview */ }
     c.restore();
-    if (glitch > 0 && ui.skin !== 1) {
+    if (glitch > 0 && ui.skin === 0) {
       glitch--;
       for (let k = 0; k < 5; k++) { const y = Math.random() * (H - 16) | 0, h = 2 + Math.random() * 12 | 0, off = (Math.random() * 56 - 28) | 0; c.drawImage(cv, 0, y, W, h, off, y, W, h); }
       R(0, Math.random() * H | 0, W, 1, ACC);

@@ -49,6 +49,10 @@
 // shape of one eye (kept up here so the IDE's generated prototypes can see it)
 struct EyeShape { float w, h, rad, lidT, slope, lidB; };
 struct OrbSprite { uint16_t *px; uint8_t *a; };
+#define SKIN_DECK 0
+#define SKIN_AERO 1
+#define SKIN_TIDE 2
+#define SKIN_COUNT 3
 
 // ───────────── Pins (Waveshare docs) ─────────────
 #define LCD_DC    4
@@ -77,7 +81,7 @@ struct OrbSprite { uint16_t *px; uint8_t *a; };
 #define SVC_UUID    "6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee"
 #define RX_UUID     "6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee"
 #define STATUS_UUID "6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee"
-#define FW_VERSION  "5.1"
+#define FW_VERSION  "6.0"
 #define DEVICE_NAME "Larp Charm"
 
 enum Cmd : uint8_t {
@@ -372,7 +376,7 @@ void loadPrefs() {
     prefs.putUChar("mode", mode); prefs.putUChar("bg", bgStyle); prefs.putUChar("flags", fl);
   }
   soundsOn = fl & 1; shakeWake = fl & 2; hourChime = fl & 4; fxOn = fl & 8; eyesIdle = fl & 16; tiltSpin = fl & 32;
-  skin       = prefs.getUChar("skin", 0) % 2;
+  skin       = prefs.getUChar("skin", 0) % SKIN_COUNT;
   aeroVar    = prefs.getUChar("avar", 0) % 3;
   stepsToday = stepsSaved = prefs.getULong("steps", 0);
   stepDay    = prefs.getShort("sday", -1);
@@ -605,7 +609,7 @@ void shadeRows(int y0, int y1, int k0, int k1) {
 
 // The accent colour follows the theme, and takes the album's colour while music plays.
 void accentTarget(uint8_t &r, uint8_t &g, uint8_t &b) {
-  uint16_t t = skin ? AERO_ACC_C[aeroVar % 3] : THEMES[theme % THEME_COUNT];
+  uint16_t t = skin == SKIN_AERO ? AERO_ACC_C[aeroVar % 3] : skin == SKIN_TIDE ? c565(70, 214, 255) : THEMES[theme % THEME_COUNT];
   r = r8(t); g = g8(t); b = b8(t);
   if (npPlaying && npTitle.length() && millis() > themePreviewUntil) {
     int nr = r8(npColor), ng = g8(npColor), nb = b8(npColor), mx = max(nr, max(ng, nb));
@@ -696,8 +700,15 @@ void drawBatteryCells(int x, int y) {
 
 // The status line every screen shares: name, time or timer, link bars, battery.
 void aeroTopBar(bool showTime);
+void tideTopBar(bool showTime);
+void tGauge(int x, int y, int w, float f, uint16_t col);
+void slash(int x, int y, int w, int h, uint16_t c);
+void tideToast();
+void tideOverlay(const char *big, const char *small, float frac);
+void tideBackdrop();
 void topBar(const char *label, bool showTime) {
-  if (skin) { aeroTopBar(showTime); return; }
+  if (skin == SKIN_AERO) { aeroTopBar(showTime); return; }
+  if (skin == SKIN_TIDE) { tideTopBar(showTime); return; }
   dimRect(0, 0, SCR_W, 23, 1);
   textAt(label, 34, 9, 1, ACC);
   char buf[16];
@@ -721,7 +732,8 @@ void topBar(const char *label, bool showTime) {
 void aeroToast();
 void drawToast() {
   if (millis() > toastUntil) return;
-  if (skin) { aeroToast(); return; }
+  if (skin == SKIN_AERO) { aeroToast(); return; }
+  if (skin == SKIN_TIDE) { tideToast(); return; }
   String m = toastMsg; m.toUpperCase();
   int w = m.length() * 12 + 20, x = (SCR_W - w) / 2;
   gfx->fillRect(x, 230, w, 26, COL_BLACK);
@@ -733,7 +745,8 @@ void aeroOverlayPanel(const char *big, const char *small, float frac);
 void drawTransferOverlay() {
   if (!xferActive || xferSize == 0 || xferKind == 3) return;      // album art arrives quietly
   int pct = (int)(100ULL * xferGot / xferSize);
-  if (skin) { aeroOverlayPanel("Receiving", nullptr, pct / 100.0f); return; }
+  if (skin == SKIN_AERO) { aeroOverlayPanel("Receiving", nullptr, pct / 100.0f); return; }
+  if (skin == SKIN_TIDE) { tideOverlay("RECEIVING", nullptr, pct / 100.0f); return; }
   gfx->fillRect(30, 112, 180, 56, COL_BLACK);
   hudPanel(30, 112, 180, 56, ACC, 0);
   textCentered(String("UPLINK ") + pct + "%", 122, 2, COL_WHITE);
@@ -743,7 +756,13 @@ void drawTransferOverlay() {
 // what a screen shows when it has nothing to show yet
 void aeroBackdrop(const uint16_t *base = nullptr);
 void emptyState(const char *label, const char *big, const char *l1, const char *l2) {
-  if (skin) {
+  if (skin == SKIN_TIDE) {
+    tideBackdrop();
+    topBar(label, true);
+    tideOverlay(big, (String(l1) + " " + l2).c_str(), -1);
+    return;
+  }
+  if (skin == SKIN_AERO) {
     aeroBackdrop();
     topBar(label, true);
     String b = big; b.toLowerCase(); b.setCharAt(0, toupper(b[0]));
@@ -943,8 +962,6 @@ void drawBubble(float cx, float cy, float r) {
 }
 
 // ═════════════ v5: the Aero look ═════════════
-#define SKIN_DECK 0
-#define SKIN_AERO 1
 #define AERO_VARS 3
 const char *AERO_NAMES[AERO_VARS] = {"Meadow", "Ocean", "Bubblegum"};
 const uint16_t AERO_ACC[AERO_VARS] = { c565(0, 132, 255), c565(0, 168, 214), c565(232, 64, 168) };
@@ -1578,8 +1595,10 @@ void clockHand(float ang, int len, uint16_t c, int thick) {
 }
 
 void drawClockAero();
+void drawClockTide();
 void drawClock() {
-  if (skin) { drawClockAero(); return; }
+  if (skin == SKIN_AERO) { drawClockAero(); return; }
+  if (skin == SKIN_TIDE) { drawClockTide(); return; }
   drawBackground();
   topBar("//CHRONO", false);
 
@@ -1739,8 +1758,10 @@ void mediaCmd(uint8_t kind) {
 }
 
 void drawMusicAero();
+void drawMusicTide();
 void drawMusic() {
-  if (skin) { drawMusicAero(); return; }
+  if (skin == SKIN_AERO) { drawMusicAero(); return; }
+  if (skin == SKIN_TIDE) { drawMusicTide(); return; }
   if (artLoaded && artBuf && FB) {
     memcpy(FB, artBuf, FB_BYTES);
   } else {
@@ -1804,7 +1825,13 @@ void drawMusic() {
 }
 
 void drawPet() {
-  if (skin) {
+  if (skin == SKIN_TIDE) {
+    tideBackdrop();
+    topBar("//DAEMON", true);
+    String pn = asciiOnly(petName); pn.toUpperCase();
+    aaText(T_L, pn.c_str(), 122 - aaWidth(T_L, pn.c_str()) / 2, 76, c565(4, 18, 70), 170);
+    aaText(T_L, pn.c_str(), 120 - aaWidth(T_L, pn.c_str()) / 2, 74, COL_WHITE);
+  } else if (skin == SKIN_AERO) {
     aeroBackdrop();
     topBar("//DAEMON", true);
     aaTextC(F_L, asciiOnly(petName).c_str(), 120, 62, COL_WHITE, true);
@@ -1837,7 +1864,12 @@ void drawPet() {
     }
   }
   uint16_t mc = petMood > 50 ? ACC : petMood > 20 ? COL_AMBER : COL_RED;
-  if (skin) {
+  if (skin == SKIN_TIDE) {
+    tGauge(50, 216, 140, petMood / 100.0f, petMood > 50 ? c565(255, 214, 40) : mc);
+    aaText(T_M, dizzy ? "DIZZY!" : petMood > 70 ? "HAPPY" : petMood > 35 ? "CHILLING" : "HUNGRY", 52, 252, COL_WHITE);
+    return;
+  }
+  if (skin == SKIN_AERO) {
     aeroProgress(50, 212, 140, 14, petMood / 100.0f, petMood > 50 ? c565(60, 200, 70) : mc);
     aaTextC(F_S, dizzy ? "Dizzy!" : petMood > 70 ? "Happy" : petMood > 35 ? "Just chilling" : "Hungry", 120, 248, COL_WHITE, true);
     return;
@@ -1847,8 +1879,10 @@ void drawPet() {
 }
 
 void drawCardAero();
+void drawCardTide();
 void drawCard() {
-  if (skin) { drawCardAero(); return; }
+  if (skin == SKIN_AERO) { drawCardAero(); return; }
+  if (skin == SKIN_TIDE) { drawCardTide(); return; }
   const uint16_t a = cardAccent;
   gfx->fillScreen(COL_VOID);
   topBar("//ID", true);
@@ -1917,13 +1951,14 @@ void drawToy() {
   bool rolling = toyRollAt && el < 1100;
   int jx = rolling ? (int)random(-5, 6) : 0, jy = rolling ? (int)random(-5, 6) : 0;
 
-  if (skin) aeroBackdrop();
+  if (skin == SKIN_AERO) aeroBackdrop();
+  else if (skin == SKIN_TIDE) tideBackdrop();
   else {
     gfx->fillScreen(COL_VOID);
     for (int y = 50; y < SCR_H; y += 20) for (int x = 10; x < SCR_W; x += 20) gfx->drawPixel(x, y, ACC_DIM);
   }
 
-  if (toyKind == 0 && skin) {
+  if (toyKind == 0 && skin == SKIN_AERO) {
     glossOrb(120 + jx, 160 + jy, 90, c565(40, 34, 90));
     glossOrb(120 + jx, 168 + jy, 50, mix565(ACC, COL_BLACK, 110), 0.95f);
     const char *ans = rolling ? "..." : toyHasResult ? EIGHT[toyResult % EIGHT_N] : (imuOK ? "shake\nme" : "tap\nme");
@@ -1968,7 +2003,12 @@ void drawToy() {
     }
   }
   topBar("//RNG", true);
-  if (skin) {
+  if (skin == SKIN_TIDE) {
+    static const char *TT[3] = {"ORACLE", "DICE", "COIN"};
+    int w = aaWidth(T_M, TT[toyKind % 3]);
+    slash(120 - w / 2 - 8, 34, w + 16, 30, c565(255, 36, 64));
+    aaText(T_M, TT[toyKind % 3], 120 - w / 2, 60, COL_WHITE);
+  } else if (skin == SKIN_AERO) {
     static const char *TA[3] = {"Oracle", "Dice", "Coin"};
     int w = aaWidth(F_M, TA[toyKind % 3]) + 30;
     glassPanel(120 - w / 2, 32, w, 26, 13, 0.6f, 0.35f);
@@ -1978,7 +2018,8 @@ void drawToy() {
 
 void drawAlarm() {
   if (!alarmUntil) return;
-  if (skin) {
+  if (skin == SKIN_TIDE) { tideOverlay("TIME'S UP", "Tap to stop", -1); return; }
+  if (skin == SKIN_AERO) {
     glassPanel(20, 92, 200, 96, 26, (millis() / 300) % 2 ? 0.9f : 0.6f, 0.45f);
     aaTextC(F_L, "Time's up!", 120, 136, AERO_INK);
     aaTextC(F_S, "Tap to stop", 120, 164, AERO_INK);
@@ -1994,7 +2035,8 @@ void drawAlarm() {
 // a line across the bottom of the other screens while a song is playing
 void drawTicker() {
   if (!npPlaying || !npTitle.length()) return;
-  if (skin) {
+  if (skin == SKIN_TIDE) return;
+  if (skin == SKIN_AERO) {
     if (mode != M_CLOCK) return;
     String s = asciiOnly(npTitle);
     if (npArtist.length()) s += String(" - ") + asciiOnly(npArtist);
@@ -2675,7 +2717,7 @@ void drawHeart(float cx, float cy, float s, uint16_t col) {
 
 void drawEyes() {
   eyesThink();
-  if (skin == SKIN_AERO) verticalGradient(c565(0, 14, 40), COL_BLACK);
+  if (skin != SKIN_DECK) verticalGradient(skin == SKIN_TIDE ? c565(0, 22, 70) : c565(0, 14, 40), COL_BLACK);
   else {
     gfx->fillScreen(COL_BLACK);
     for (int y = 10; y < SCR_H; y += 20) for (int x = 10; x < SCR_W; x += 20) gfx->drawPixel(x, y, c565(0, 26, 52));
@@ -2707,7 +2749,7 @@ void drawEyes() {
     for (int i = 0; i < 3; i++) {
       float p = fmodf(t * 0.5f + i / 3.0f, 1.0f);
       int zx = 190 + (int)(p * 26), zy = 92 - (int)(p * 50);
-      if (skin == SKIN_AERO) aaText(F_M, "z", zx, zy, c565(120, 200, 255), (uint8_t)(255 * (1 - p)));
+      if (skin != SKIN_DECK) aaText(F_M, "z", zx, zy, c565(120, 200, 255), (uint8_t)(255 * (1 - p)));
       else textAt("z", zx, zy, 1 + i % 2, mix565(c565(0, 140, 255), COL_BLACK, (uint8_t)(p * 255)));
     }
   }
@@ -2812,7 +2854,7 @@ void drawJukeAero() {
   }
 }
 
-void drawJuke() { if (skin == SKIN_AERO) drawJukeAero(); else drawJukeDeck(); }
+
 
 // ═════════════ v5: charging screen ═════════════
 uint8_t chargeReturn = M_DECK;
@@ -2880,7 +2922,7 @@ void drawChargeAero() {
   aaTextC(F_S, b, 120, 254, AERO_INK);
 }
 
-void drawCharge() { if (skin == SKIN_AERO) drawChargeAero(); else drawChargeDeck(); }
+
 
 // ═════════════ v5: torch ═════════════
 const uint16_t TORCH_COL[4] = { COL_WHITE, c565(255, 206, 150), c565(255, 0, 0), c565(120, 230, 255) };
@@ -2889,7 +2931,7 @@ uint8_t torchCol = 0;
 void drawTorch() {
   gfx->fillScreen(TORCH_COL[torchCol & 3]);
   if (millis() < chromeUntil) {
-    if (skin == SKIN_AERO) aaTextC(F_S, "Tap for another colour", 120, 256, c565(90, 90, 90));
+    if (skin != SKIN_DECK) aaTextC(F_S, "Tap for another colour", 120, 256, c565(90, 90, 90));
     else textCentered("TAP: COLOUR  SWIPE DOWN: OFF", 252, 1, c565(90, 90, 90));
   }
 }
@@ -2919,6 +2961,378 @@ void stepDayCheck() {
   }
   if (stepsToday - stepsSaved >= 200) { stepsSaved = stepsToday; prefs.putULong("steps", stepsToday); petMood = min(100, petMood + 1); }
 }
+
+// ═════════════ v6: the Tide look ═════════════
+// Deep water, heavy slanted type, red slash highlights and tilted status cards.
+// Home is a slanted list you scroll up and down (swipe, drag or tilt forward/back); tap the highlighted one to open it.
+const uint16_t TD_INK = c565(4, 18, 70), TD_NAVY = c565(6, 30, 110), TD_CYAN = c565(70, 214, 255), TD_RED = c565(255, 36, 64), TD_YEL = c565(255, 214, 40);
+const char *TIDE_TITLE[M_COUNT] = {"CLOCK", "MESSAGE", "PHOTO", "CLIPS", "MUSIC", "PET", "DICE", "ID CARD", "HOME", "EYES", "JUKEBOX", "TORCH", "POWER"};
+uint16_t *tideBg = nullptr;
+int8_t    tideBuilt = -1;
+bool      hiddenHour = false;                  // midnight to 1 am the water turns green and a full moon rises
+
+void tideHourCheck() {
+  struct tm t;
+  hiddenHour = localNow(t) && t.tm_hour == 0;
+}
+
+void buildTideBg() {
+  if (!tideBg || tideBuilt == (int8_t)hiddenHour) return;
+  for (int y = 0; y < SCR_H; y++) {
+    float t = y / 279.0f;
+    for (int x = 0; x < SCR_W; x++) {
+      float r, g, b;
+      if (t < 0.45f) { float k = t / 0.45f; r = 40 - 30 * k; g = 128 - 70 * k; b = 255 - 55 * k; }
+      else { float k = (t - 0.45f) / 0.55f; r = 10 - 8 * k; g = 58 - 44 * k; b = 200 - 140 * k; }
+      // shafts of light falling from the surface, top right
+      float u = x * 0.9f + y * 0.45f;
+      float ray = powf(sinf(u * 0.04f) * 0.5f + 0.5f, 12) * (1 - t) * 0.45f + powf(sinf(u * 0.067f + 2.1f) * 0.5f + 0.5f, 16) * (1 - t) * 0.25f;
+      r = scr(r, ray); g = scr(g, ray); b = scr(b, ray);
+      // a faint staircase climbing out of the deep
+      float sx = x - 120 + (279 - y) * 0.55f;
+      if (sx > 0 && sx < 70 && y > 120) {
+        int step = (int)((279 - y) / 9.0f);
+        float e = fabsf(fmodf(279 - y, 9.0f) - 0.5f);
+        float a = (e < 1.0f ? 0.18f : 0.06f) * clamp01((y - 120) / 60.0f) * (step % 2 ? 1 : 0.8f);
+        r = scr(r, a); g = scr(g, a); b = scr(b, a);
+      }
+      if (hiddenHour) { float gg = g; g = (r + gg + b) / 3 + 30; r = r * 0.4f + 10; b = b * 0.35f; }
+      tideBg[y * SCR_W + x] = rgbf(r, g, b);
+    }
+  }
+  tideBuilt = hiddenHour;
+}
+
+void tideBackdrop() {
+  static uint32_t lastChk = 0;
+  if (millis() - lastChk > 5000) { lastChk = millis(); tideHourCheck(); }
+  buildTideBg();
+  if (tideBg && FB) memcpy(FB, tideBg, FB_BYTES); else gfx->fillScreen(TD_NAVY);
+  // ripples of light near the surface
+  for (int k = 0; k < 3; k++) {
+    int yb = 8 + k * 11;
+    for (int x = 0; x < SCR_W; x += 2) {
+      int y = yb + (int)(sinf(x * 0.05f + frameNo * 0.06f + k * 2) * 3);
+      blendPx(x, y, COL_WHITE, 70 - k * 18);
+    }
+  }
+  if (hiddenHour) { glossOrb(186, 52, 30, c565(250, 250, 210), 0.9f); }
+  for (int i = 0; i < 9; i++) {
+    AeroBubble &b = abub[i];
+    b.y -= b.v * 0.8f;
+    b.x += sinf(frameNo * 0.03f + b.ph) * 0.3f;
+    if (b.y < -b.r - 4) { b.y = SCR_H + b.r + random(0, 60); b.x = random(10, 230); }
+    drawBubble(b.x, b.y, b.r * 0.6f);
+  }
+}
+
+// parallelogram: top edge shifted right by `lean`
+void fillPara(int x, int y, int w, int h, int lean, uint16_t c) {
+  gfx->fillTriangle(x + lean, y, x + w + lean, y, x, y + h - 1, c);
+  gfx->fillTriangle(x + w + lean, y, x + w, y + h - 1, x, y + h - 1, c);
+}
+// a ragged red slash, drawn behind the highlighted label
+void slash(int x, int y, int w, int h, uint16_t c) {
+  fillPara(x, y + 2, w, h - 4, h / 2, c);
+  gfx->fillTriangle(x + w + h / 2 - 2, y + 2, x + w + h / 2 + 14, y - 3, x + w + 4, y + h / 2, c);
+  gfx->fillTriangle(x - 6, y + h, x + 10, y + h - 6, x + 2, y + h - 2, c);
+}
+// text turned a quarter turn, reading bottom to top (the giant word on the left edge)
+void tTextUp(const AAFont &f, const char *s, int x, int y, uint16_t col, uint8_t alpha) {
+  if (!FB) return;
+  for (; *s; s++) {
+    const AAGlyph *g = aaGlyph(f, *s);
+    if (!g) continue;
+    const uint8_t *bmp = f.bmp + g->off;
+    int rb = (g->w + 1) / 2;
+    for (int j = 0; j < g->h; j++)
+      for (int i = 0; i < g->w; i++) {
+        uint8_t v = bmp[j * rb + (i >> 1)];
+        v = (i & 1) ? (v & 15) : (v >> 4);
+        if (v) blendPx(x + g->dy + j, y - g->dx - i, col, (uint8_t)(v * 17 * alpha / 255));
+      }
+    y -= g->adv;
+  }
+}
+void tText(const AAFont &f, const char *s, int x, int y, uint16_t col, bool shadow = true) {
+  if (shadow) aaText(f, s, x + 2, y + 2, TD_INK, 170);
+  aaText(f, s, x, y, col);
+}
+// a slanted gauge, like the bars next to a party member
+void tGauge(int x, int y, int w, float f, uint16_t col) {
+  fillPara(x, y, w, 5, 3, TD_INK);
+  int fw = (int)((w - 2) * clamp01(f));
+  if (fw > 1) fillPara(x + 1, y + 1, fw, 3, 2, col);
+}
+
+void tideTopBar(bool showTime) {
+  const char *title = TIDE_TITLE[mode < M_COUNT ? mode : M_DECK];
+  int tw = aaWidth(T_M, title);
+  fillPara(14, 4, tw + 26, 26, 8, TD_INK);
+  gfx->fillRect(20, 28, tw + 16, 2, TD_RED);
+  tText(T_M, title, 26, 26, COL_WHITE, false);
+  char b[24];
+  snprintf(b, sizeof(b), "%d%%", batPct);
+  int bw = aaWidth(T_S, b);
+  tText(T_S, b, 214 - bw, 20, charging ? c565(120, 255, 150) : (batPct < 15 ? TD_RED : COL_WHITE));
+  if (charging) drawBolt(214 - bw - 8, 13, TD_YEL);
+  struct tm t;
+  if (timerEndAt) { unsigned long left = (timerEndAt - millis()) / 1000; snprintf(b, sizeof(b), "%lu:%02lu", left / 60, left % 60); tText(T_S, b, 150 - aaWidth(T_S, b), 20, TD_YEL); }
+  else if (showTime && localNow(t)) { snprintf(b, sizeof(b), "%d:%02d", t.tm_hour, t.tm_min); tText(T_S, b, 168 - aaWidth(T_S, b), 20, TD_CYAN); }
+}
+
+void tideToast() {
+  String m = toastMsg; m.toUpperCase();
+  int w = aaWidth(T_M, m.c_str()) + 30, x = (SCR_W - w) / 2;
+  fillPara(x, 226, w, 30, 10, TD_INK);
+  slash(x + 6, 252, w - 20, 6, TD_RED);
+  tText(T_M, m.c_str(), x + 16, 251, COL_WHITE, false);
+}
+
+void tideOverlay(const char *big, const char *small, float frac) {
+  fillPara(22, 104, 196, 74, 14, TD_INK);
+  gfx->fillRect(26, 176, 180, 3, TD_RED);
+  tText(T_L, big, 40, 146, COL_WHITE, false);
+  if (frac >= 0) tGauge(40, 158, 160, frac, TD_CYAN);
+  else if (small) aaText(F_S, small, 40, 166, TD_CYAN);
+}
+
+// ── home: the slanted list ──
+#define TM_N 11
+const uint8_t TM_MODE[TM_N] = {M_CLOCK, M_MUSIC, M_EYES, M_JUKE, M_PET, M_TOY, M_TEXT, M_PHOTO, M_CLIP, M_CARD, M_TORCH};
+const char *TM_NAME[TM_N] = {"CLOCK", "MUSIC", "EYES", "JUKEBOX", "PET", "DICE", "MESSAGE", "PHOTO", "CLIPS", "ID CARD", "TORCH"};
+float    tmPos = 0, tmVel = 0;                 // scroll position in items (fractional while moving)
+int      tmSel = 0, tmLastY = 0;
+bool     tmDrag = false;
+float    tmTiltBase = 0;
+uint32_t tmFrameT = 0, tmLastT = 0;
+int16_t  tmRowY[TM_N], tmRowX[TM_N];
+#define TM_ROW   27
+#define TM_CY    176
+
+int tmOfMode(uint8_t m) { for (int i = 0; i < TM_N; i++) if (TM_MODE[i] == m) return i; return -1; }
+void tideSelect(int i, bool instant) { tmSel = ((i % TM_N) + TM_N) % TM_N; if (instant) { tmPos = tmSel; tmVel = 0; } }
+bool tideMoving() { return tmDrag || fabsf(tmPos - tmSel) > 0.002f || fabsf(tmVel) > 0.002f; }
+void tideMove(int d) { tmSel = ((tmSel + d) % TM_N + TM_N) % TM_N; if (fabsf(tmPos - tmSel) > TM_N / 2.0f) tmPos += tmPos > tmSel ? -TM_N : TM_N; sfx(0); }
+
+void drawTideHome() {
+  uint32_t now = millis();
+  float dt = tmFrameT ? constrain((now - tmFrameT) / 33.3f, 0.2f, 3.0f) : 1.0f;
+  tmFrameT = now;
+  if (!tmDrag) {
+    tmTiltBase += (tiltY - tmTiltBase) * 0.01f * dt;
+    if (tiltSpin && imuOK && now - lastTouchUp > 800) {           // tilt the top of the charm toward you to scroll down
+      static uint32_t lastTilt = 0;
+      float ty = tiltY - tmTiltBase;
+      if (fabsf(ty) > 0.35f && now - lastTilt > 380) { lastTilt = now; tideMove(ty > 0 ? 1 : -1); }
+    }
+    float target = tmSel;
+    while (target - tmPos > TM_N / 2.0f) target -= TM_N;
+    while (tmPos - target > TM_N / 2.0f) target += TM_N;
+    tmVel += (target - tmPos) * 0.24f * dt;        // a stiff spring: it snaps, then settles without wobble
+    tmVel *= powf(0.48f, dt);
+    tmPos += tmVel * dt;
+    if (fabsf(target - tmPos) < 0.002f && fabsf(tmVel) < 0.002f) { tmPos = tmSel; tmVel = 0; }
+  }
+  tideBackdrop();
+  // giant name of the highlighted item up the left edge
+  tTextUp(T_L, TM_NAME[tmSel], 46, 272, COL_WHITE, 70);
+
+  // the "wallet" box: time, date, steps
+  fillPara(10, 10, 116, 70, 6, COL_WHITE);
+  fillPara(10, 76, 112, 4, 2, TD_RED);
+  struct tm t;
+  char buf[32];
+  if (localNow(t)) {
+    int h = t.tm_hour;
+    if (!use24h) { h %= 12; if (h == 0) h = 12; }
+    snprintf(buf, sizeof(buf), "%d:%02d", h, t.tm_min);
+    aaText(T_L, buf, 20, 56, TD_INK);
+    snprintf(buf, sizeof(buf), "%s %d %s", DAYS[t.tm_wday], t.tm_mday, MON[t.tm_mon]);
+    aaText(T_S, buf, 20, 73, TD_NAVY);
+  } else { aaText(T_L, "--:--", 20, 56, TD_INK); aaText(T_S, "OPEN THE APP", 20, 73, TD_NAVY); }
+
+  // status cards on the right, tilted like a party list
+  struct Card { const char *k; char v[12]; float f; uint16_t c; } cards[3];
+  snprintf(cards[0].v, 12, "%d%%", batPct); cards[0].k = charging ? "CHRG" : "PWR"; cards[0].f = batPct / 100.0f; cards[0].c = charging ? c565(120, 255, 150) : TD_CYAN;
+  snprintf(cards[1].v, 12, "%lu", (unsigned long)stepsToday); cards[1].k = "STEP"; cards[1].f = min(1.0f, stepsToday / 8000.0f); cards[1].c = TD_YEL;
+  snprintf(cards[2].v, 12, "%d", petMood); cards[2].k = "PET"; cards[2].f = petMood / 100.0f; cards[2].c = c565(255, 120, 190);
+  for (int i = 0; i < 3; i++) {
+    int x = 140 + i * 4, y = 12 + i * 23;
+    fillPara(x, y, 80, 20, 5, i == 0 && bleConnected ? TD_NAVY : TD_INK);
+    gfx->fillRect(x + 1, y + 1, 3, 18, cards[i].c);
+    aaText(T_S, cards[i].k, x + 10, y + 15, TD_CYAN);
+    aaText(T_S, cards[i].v, x + 74 - aaWidth(T_S, cards[i].v), y + 15, COL_WHITE);
+    tGauge(x + 8, y + 19, 64, cards[i].f, cards[i].c);
+  }
+
+  // the list: rows step right as they go down, the highlighted one big on a red slash
+  int base = (int)floorf(tmPos);
+  for (int k = -4; k <= 4; k++) {
+    int idx = ((base + k) % TM_N + TM_N) % TM_N;
+    float d = (base + k) - tmPos;                     // rows from the highlight
+    float ad = fabsf(d);
+    int y = TM_CY + (int)(d * TM_ROW + (d > 0 ? 12 * fminf(1.0f, d) : 0));      // rows under the big one make room for it
+    int x = 70 + (int)(d * 9);
+    tmRowY[idx] = y; tmRowX[idx] = x;
+    if (y < 96 || y > 284) continue;
+    if (ad < 0.5f) {
+      int w = aaWidth(T_L, TM_NAME[idx]);
+      slash(x - 10, y - 34, w + 22, 38, TD_RED);
+      gfx->fillRect(x - 4, y + 4, w + 30, 3, COL_WHITE);
+      tText(T_L, TM_NAME[idx], x, y, COL_WHITE);
+    } else {
+      uint8_t a = (uint8_t)constrain(255 - (int)(ad * 55), 60, 255);
+      aaText(T_M, TM_NAME[idx], x + 2, y + 2, TD_INK, a / 2);
+      aaText(T_M, TM_NAME[idx], x, y, mix565(TD_CYAN, COL_WHITE, ad < 1.5f ? 90 : 0), a);
+    }
+  }
+}
+
+// Opening: slanted panels sweep across the screen, then pull away to show what opened.
+void tideWipe(bool opening) {
+  if (!FB || !prevFb || sleeping) return;
+  memcpy(prevFb, FB, FB_BYTES);
+  const int steps = 7;
+  for (int s = 1; s <= steps; s++) {
+    float t = (float)s / steps;
+    t = 1.0f - (1.0f - t) * (1.0f - t);
+    memcpy(FB, prevFb, FB_BYTES);
+    int edge = (int)((opening ? t : 1 - t) * 420) - 100;
+    fillPara(-120, 0, edge + 120, SCR_H, 90, TD_INK);
+    fillPara(edge - 6, 0, 14, SCR_H, 90, TD_RED);
+    fillPara(edge - 40, 0, 10, SCR_H, 90, TD_CYAN);
+    gfx->flush();
+  }
+}
+
+// ── Tide versions of the other screens ──
+void moonPhase(int cx, int cy, int r) {
+  time_t now = time(nullptr);
+  double days = (now - 947182440.0) / 86400.0;            // a known new moon: 6 Jan 2000 18:14 UTC
+  double ph = fmod(days, 29.530588853) / 29.530588853;     // 0 new, 0.5 full
+  gfx->fillCircle(cx, cy, r, c565(240, 244, 255));
+  float k = cosf(ph * 6.2831853f);                         // 1 at new moon, -1 at full
+  for (int y = -r; y <= r; y++) {
+    int w = (int)sqrtf((float)(r * r - y * y));
+    int term = (int)(w * k);
+    if (ph < 0.5) gfx->drawFastHLine(cx - w, cy + y, w + term, TD_INK);     // waxing: dark on the left
+    else          gfx->drawFastHLine(cx - term, cy + y, w + term, TD_INK);  // waning: dark on the right
+  }
+}
+
+void drawClockTide() {
+  tideBackdrop();
+  tideTopBar(false);
+  struct tm t;
+  char buf[32];
+  bool ok = localNow(t);
+  int h = ok ? t.tm_hour : 0;
+  if (!use24h) { h %= 12; if (h == 0) h = 12; }
+  if (ok) snprintf(buf, sizeof(buf), "%d:%02d", h, t.tm_min); else strcpy(buf, "--:--");
+  int w = aaWidth(T_XL, buf), x = (SCR_W - w) / 2 - 6;
+  aaText(T_XL, buf, x + 5, 142, TD_CYAN, 140);
+  slash(x - 10, 140, w + 20, 8, TD_RED);
+  aaText(T_XL, buf, x, 136, COL_WHITE);
+  if (ok) {
+    snprintf(buf, sizeof(buf), "%s  %d  %s", DAYS[t.tm_wday], t.tm_mday, MON[t.tm_mon]);
+    tText(T_M, buf, 30, 182, COL_WHITE);
+    if (hiddenHour) tText(T_M, "THE HIDDEN HOUR", 30, 214, c565(150, 255, 150));
+    else {
+      fillPara(30, 196, 150, 6, 4, TD_INK);
+      fillPara(31, 197, (int)(148 * t.tm_sec / 59.0f), 4, 3, TD_CYAN);
+    }
+  }
+  moonPhase(196, 238, 18);
+  aaText(T_S, "MOON", 152, 244, TD_CYAN);
+}
+
+void drawMusicTide() {
+  if (artLoaded && artBuf && FB) memcpy(FB, artBuf, FB_BYTES);
+  else { tideBackdrop(); glossOrb(120, 110, 54, TD_NAVY); }
+  tideTopBar(true);
+  fillPara(-10, 176, 270, 110, 28, TD_INK);
+  gfx->fillRect(0, 176, SCR_W, 3, TD_RED);
+  String title = asciiOnly(npTitle.length() ? npTitle : String("NOTHING PLAYING")); title.toUpperCase();
+  String artist = asciiOnly(npArtist.length() || npTitle.length() ? npArtist : String("PLAY SOMETHING ON YOUR PHONE")); artist.toUpperCase();
+  tText(T_L, aaClip(T_L, title, 206).c_str(), 18, 220, COL_WHITE, false);
+  aaText(T_S, aaClip(T_S, artist, 206).c_str(), 20, 240, TD_CYAN);
+  uint32_t pos = npPosition();
+  tGauge(20, 248, 200, npDurMs ? (float)pos / npDurMs : 0, TD_CYAN);
+  char b[12];
+  snprintf(b, sizeof(b), "%lu:%02lu", (unsigned long)(pos / 60000), (unsigned long)((pos / 1000) % 60));
+  aaText(T_S, b, 20, 272, COL_WHITE);
+  aaText(T_S, npPlaying ? "<<   PAUSE   >>" : "<<   PLAY   >>", 84, 272, TD_CYAN);
+  if (millis() < mediaFlashUntil) slash(60, 256, 120, 20, TD_RED);
+}
+
+void drawJukeTide() {
+  tideBackdrop();
+  tideTopBar(true);
+  int16_t ids[8];
+  if (jbCat >= catCount()) jbCat = 0;
+  int n = songsInCat(jbCat, ids, 8);
+  String cn = catName(jbCat); cn.toUpperCase();
+  fillPara(10, 32, 220, 16, 5, TD_INK);
+  aaText(T_S, cn.c_str(), 24, 46, TD_CYAN);
+  aaText(T_S, "<  >", 196, 46, COL_WHITE);
+  for (int i = 0; i < n; i++) {
+    int id = ids[i], y = 50 + i * 17;
+    bool cur = jbPlaying && jbSong == id;
+    String nm = songName(id); nm.toUpperCase();
+    if (cur) slash(16, y + 1, aaWidth(T_S, nm.c_str()) + 14, 15, TD_RED);
+    int q = -1;
+    for (int k = 0; k < jbQLen; k++) if (jbQueue[k] == id) { q = k; break; }
+    aaText(T_S, aaClip(T_S, nm, 190).c_str(), 22 + i * 2, y + 14, cur ? COL_WHITE : (q >= 0 ? TD_YEL : mix565(TD_CYAN, COL_WHITE, 120)));
+  }
+  fillPara(6, 192, 232, 60, 12, TD_INK);
+  gfx->fillRect(10, 250, 220, 2, TD_RED);
+  char nn[6];
+  noteName(jbPlaying ? jbLastMidi : 0, nn);
+  tText(T_L, nn, 22, 234, jbToneOn ? COL_WHITE : TD_CYAN, false);
+  for (int i = 0; i < 20; i++) { uint8_t m = jbRoll[i]; if (!m) continue; int h = constrain((m - 60) * 2, 2, 28); fillPara(100 + i * 6, 228 - h, 4, h, 2, i == 19 && jbToneOn ? COL_WHITE : TD_CYAN); }
+  tGauge(22, 238, 196, jbProgress(), TD_CYAN);
+  aaText(T_S, jbPlaying ? "STOP           SKIP >" : "TAP A SONG", 120, 272, COL_WHITE);
+}
+
+void drawChargeTide() {
+  tideBackdrop();
+  tideTopBar(true);
+  char b[24];
+  snprintf(b, sizeof(b), "%d%%", batPct);
+  int w = aaWidth(T_XL, b), x = (SCR_W - w) / 2;
+  aaText(T_XL, b, x + 5, 136, TD_CYAN, 140);
+  aaText(T_XL, b, x, 130, COL_WHITE);
+  fillPara(24, 150, 192, 34, 12, TD_INK);
+  int fw = (int)(186 * clamp01(batPct / 100.0f));
+  fillPara(27, 153, fw, 28, 10, charging ? c565(90, 230, 130) : TD_CYAN);
+  if (charging) { int sx = 27 + (int)((millis() / 6) % 200); fillPara(sx, 153, 10, 28, 10, COL_WHITE); fillPara(24, 150, 3, 34, 12, TD_INK); }
+  slash(28, 196, 140, 32, TD_RED);
+  tText(T_L, charging ? (batPct >= 99 ? "FULL" : "CHARGING") : "BATTERY", 36, 226, COL_WHITE, false);
+  snprintf(b, sizeof(b), "%.2f V", batVolts);
+  aaText(T_M, b, 150, 260, TD_CYAN);
+}
+
+void drawCardTide() {
+  tideBackdrop();
+  tideTopBar(true);
+  fillPara(10, 46, 214, 116, 18, COL_WHITE);
+  fillPara(10, 158, 200, 6, 4, TD_RED);
+  String name = asciiOnly(cardName), sub = asciiOnly(cardSub);
+  String nu = name; nu.toUpperCase();
+  aaText(aaWidth(T_L, nu.c_str()) <= 180 ? T_L : T_M, nu.c_str(), 28, 98, TD_INK);
+  aaText(F_M, aaClip(F_M, sub, 180).c_str(), 30, 124, mix565(cardAccent, COL_BLACK, 90));
+  uint32_t hsh = 2166136261u;
+  for (size_t i = 0; i < name.length(); i++) hsh = (hsh ^ (uint8_t)name[i]) * 16777619u;
+  for (int x = 30, i = 0; x < 200; i++) { hsh = hsh * 1664525u + 1013904223u; int w = 1 + ((hsh >> 28) & 3); if (!(i & 1)) rectC(x, 132, min(w, 200 - x), 18, TD_INK); x += w; }
+  int ph = (frameNo / 5) % 4;
+  for (int i = 0; i < 3; i++) { uint16_t c = i < ph ? TD_CYAN : TD_NAVY; gfx->drawCircle(120, 214, 12 + i * 10, c); gfx->drawCircle(120, 214, 13 + i * 10, c); }
+  gfx->fillCircle(120, 214, 6, COL_WHITE);
+  tText(T_S, "TAP YOUR PHONE HERE", 64, 268, COL_WHITE);
+}
+
+void drawJuke()   { if (skin == SKIN_AERO) drawJukeAero(); else if (skin == SKIN_TIDE) drawJukeTide(); else drawJukeDeck(); }
+void drawCharge() { if (skin == SKIN_AERO) drawChargeAero(); else if (skin == SKIN_TIDE) drawChargeTide(); else drawChargeDeck(); }
 
 // ───────────── Screen effects ─────────────
 void scanlines() {
@@ -2972,7 +3386,7 @@ void drawScene() {
     case M_JUKE:  drawJuke();  break;
     case M_TORCH: drawTorch(); break;
     case M_CHARGE: drawCharge(); break;
-    default:      if (skin) drawAeroHome(); else drawDeck(); break;
+    default:      if (skin == SKIN_AERO) drawAeroHome(); else if (skin == SKIN_TIDE) drawTideHome(); else drawDeck(); break;
   }
 }
 
@@ -2980,9 +3394,9 @@ void render() {
   updateAccent();
   drawScene();
   if (mode == M_CLOCK || mode == M_PET || mode == M_TOY || mode == M_CARD) drawTicker();
-  bool fx = !skin && fxOn;
+  bool fx = skin == SKIN_DECK && fxOn;
   if (fx && mode != M_PHOTO && mode != M_CLIP && mode != M_MUSIC && mode != M_TORCH) scanlines();
-  if (glitchFrames && !skin) { glitchFx(5); glitchFrames--; }
+  if (glitchFrames && skin == SKIN_DECK) { glitchFx(5); glitchFrames--; }
   else if (fx && mode == M_DECK && random(0, 220) == 0) glitchFrames = 2;
   drawAlarm();
   drawTransferOverlay();
@@ -3049,7 +3463,7 @@ void aeroZoom(int oi, bool opening) {
 }
 
 void openModule(int m) {
-  if (mode == M_DECK) { sfx(1); if (skin) aeroZoom(orbOfMode(m), true); else zoomAnim(tileOfMode(m), true); }
+  if (mode == M_DECK) { sfx(1); if (skin == SKIN_AERO) aeroZoom(orbOfMode(m), true); else if (skin == SKIN_TIDE) tideWipe(true); else zoomAnim(tileOfMode(m), true); }
   setMode(m);
   lastFrame = 0;
 }
@@ -3059,11 +3473,12 @@ void closeModule() {
   if (mode == M_CHARGE) { setMode(chargeReturn == M_CHARGE ? M_DECK : chargeReturn); lastFrame = 0; return; }
   int ti = tileOfMode(mode), oi = orbOfMode(mode);
   sfx(1);
-  if (skin && oi >= 0) orbitFocus(oi, true);
+  if (skin == SKIN_AERO && oi >= 0) orbitFocus(oi, true);
+  if (skin == SKIN_TIDE && tmOfMode(mode) >= 0) tideSelect(tmOfMode(mode), true);
   setMode(M_DECK);
   updateAccent();
   drawScene();
-  if (skin) aeroZoom(oi, false); else zoomAnim(ti, false);
+  if (skin == SKIN_AERO) aeroZoom(oi, false); else if (skin == SKIN_TIDE) tideWipe(false); else zoomAnim(ti, false);
   glitchFrames = 1;
   lastFrame = 0;
 }
@@ -3389,8 +3804,8 @@ void handlePacket(const uint8_t *d, uint16_t n) {
 
     case CMD_SKIN:
       if (len >= 1) {
-        if (len >= 2 && p[1] % AERO_VARS != aeroVar) { aeroVar = p[1] % AERO_VARS; prefs.putUChar("avar", aeroVar); if ((p[0] & 1) == skin) toast(AERO_NAMES[aeroVar], 900); }
-        if ((p[0] & 1) != skin) setSkin(p[0] & 1);
+        if (len >= 2 && p[1] % AERO_VARS != aeroVar) { aeroVar = p[1] % AERO_VARS; prefs.putUChar("avar", aeroVar); if (p[0] % SKIN_COUNT == skin) toast(AERO_NAMES[aeroVar], 900); }
+        if (p[0] % SKIN_COUNT != skin) setSkin(p[0] % SKIN_COUNT);
         sendStatus();
       }
       break;
@@ -3560,12 +3975,13 @@ void cycleAero(int dir) {
 }
 
 void setSkin(uint8_t s) {
-  skin = s % 2;
+  skin = s % SKIN_COUNT;
   prefs.putUChar("skin", skin);
   if (skin == SKIN_AERO) { orbitFocus(max(0, orbOfMode(mode)), true); buildOrbSprites(); buildHomeBase(); }
   glitchFrames = skin == SKIN_DECK ? 5 : 0;
   snapAccent();
-  toast(skin == SKIN_AERO ? "Aero" : "Deck", 900);
+  if (skin == SKIN_TIDE) { tideSelect(max(0, tmOfMode(mode)), true); tideHourCheck(); buildTideBg(); }
+  toast(skin == SKIN_AERO ? "Aero" : skin == SKIN_TIDE ? "Tide" : "Deck", 900);
   sfx(2);
   lastFrame = 0;
 }
@@ -3625,6 +4041,7 @@ void onSwipe(int dir) {
 
 // Swipe down closes whatever is open. On the home screen, up and down change brightness.
 void onVSwipe(int up) {
+  if (mode == M_DECK && skin == SKIN_TIDE) { tideMove(up > 0 ? 1 : -1); return; }
   if (up < 0 && mode != M_DECK) { closeModule(); return; }
   if (mode == M_TORCH) return;
   setBacklight(brightness + (up > 0 ? 40 : -40));
@@ -3639,6 +4056,12 @@ void onTap(bool dbl) {
       if (skin == SKIN_DECK) {
         int ti = tileAt(tch.x0, tch.y0);
         if (ti >= 0) openModule(TILE_MODE[ti]);
+      } else if (skin == SKIN_TIDE) {
+        if (tch.y0 < 96) { openModule(M_CLOCK); break; }
+        int best = -1, bd = 999;
+        for (int i = 0; i < TM_N; i++) { int d = abs(tch.y0 - (tmRowY[i] - 12)); if (tmRowY[i] >= 96 && d < bd) { bd = d; best = i; } }
+        if (best == tmSel || best < 0) openModule(TM_MODE[tmSel]);
+        else if (bd < 18) { tmSel = best; sfx(0); }
       } else {
         for (int k = ORB_N - 1; k >= 0; k--) {
           int i = orbOrder[k], dx = tch.x0 - orbX[i], dy = tch.y0 - orbY[i], rr = orbR[i] + 5;
@@ -3757,6 +4180,17 @@ void handleTouch() {
     if (mode == M_DECK && skin == SKIN_AERO && !tch.consumed && !orbitDrag && abs(dx) > 8 && abs(dx) > abs(dy)) {
       orbitDrag = true; orbitGoalOn = false; tch.consumed = true; orbitLastX = tch.x0; orbitLastT = now; orbitFlick = 0; orbitV = 0;
     }
+    // Tide home: drag up and down to scroll the list
+    if (mode == M_DECK && skin == SKIN_TIDE && !tch.consumed && !tmDrag && abs(dy) > 8 && abs(dy) > abs(dx)) {
+      tmDrag = true; tch.consumed = true; tmLastY = tch.y0;
+    }
+    if (tmDrag) {
+      tmPos += (tmLastY - y) / (float)TM_ROW;
+      tmLastY = y;
+      int s = ((int)lroundf(tmPos) % TM_N + TM_N) % TM_N;
+      if (s != tmSel) { tmSel = s; sfx(0); }
+      return;
+    }
     if (orbitDrag) {
       float d = (x - orbitLastX) * 0.012f;
       orbitA += d;
@@ -3770,13 +4204,14 @@ void handleTouch() {
     if (abs(dy) >= SWIPE_PX && abs(dy) > abs(dx)) { tch.consumed = true; onVSwipe(dy < 0 ? 1 : -1); return; }
     if (now - tch.t0 > LONGPRESS_MS && abs(dx) < TAP_PX && abs(dy) < TAP_PX) {
       tch.consumed = true;
-      if (mode == M_DECK) setSkin(skin ^ 1);                     // press and hold the home screen: switch look
+      if (mode == M_DECK) setSkin((skin + 1) % SKIN_COUNT);     // press and hold the home screen: next look
       else if (mode == M_CARD) closeModule();
       else openModule(M_CARD);                                    // anywhere else: the ID card
     }
   } else if (tch.down) {
     tch.down = false;
     lastTouchUp = now;
+    if (tmDrag) { tmDrag = false; return; }
     if (orbitDrag) {                           // let go: keep spinning with the finger's speed, unless it stopped first
       orbitDrag = false;
       orbitV = (now - orbitLastT > 90) ? 0 : constrain(orbitFlick, -0.45f, 0.45f);
@@ -3962,7 +4397,11 @@ void setup() {
   // boot log: each line is a real check
   FB = gfx->getFramebuffer();
   snapAccent();
-  if (skin) {
+  if (skin == SKIN_TIDE) {
+    verticalGradient(c565(30, 110, 255), c565(2, 14, 60));
+    aaText(T_L, "LARP CHARM", 40, 152, COL_WHITE);
+    gfx->flush();
+  } else if (skin) {
     verticalGradient(c565(30, 120, 230), c565(190, 236, 255));
     aaTextC(F_L, "Larp Charm", 120, 150, COL_WHITE, true);
     gfx->flush();
@@ -3985,6 +4424,7 @@ void setup() {
   prevFb   = (uint16_t *)ps_malloc(FB_BYTES);
   frameBuf = (uint8_t *)ps_malloc(FRAME_MAX);
   aeroBg   = (uint16_t *)ps_malloc(FB_BYTES);
+  tideBg   = (uint16_t *)ps_malloc(FB_BYTES);
   homeBase = (uint16_t *)ps_malloc(FB_BYTES);
   jbNotesBuf = (uint8_t *)ps_malloc(MY_SONG_MAX * 2);
   initAeroBubbles();
@@ -4020,7 +4460,13 @@ void setup() {
   snprintf(pw, sizeof(pw), "%d%% %.2fV", batPct, batVolts);
   bootLine("power", pw, batPct > 15);
 
-  if (skin) {
+  if (skin == SKIN_TIDE) {
+    tideHourCheck();
+    tideBackdrop();
+    slash(26, 120, 190, 44, TD_RED);
+    tText(T_L, "LARP CHARM", 40, 160, COL_WHITE);
+    aaText(T_S, "PRESS ANYWHERE", 70, 200, TD_CYAN);
+  } else if (skin) {
     buildOrbSprites();
     buildHomeBase();
     aeroBackdrop();
@@ -4034,7 +4480,8 @@ void setup() {
   lastInteraction = millis();
   if (charging) { chargeReturn = mode; setMode(M_CHARGE, false); }
   else setMode(mode, false);
-  if (skin) orbitFocus(max(0, orbOfMode(chargeReturn)), true);
+  if (skin == SKIN_AERO) orbitFocus(max(0, orbOfMode(chargeReturn)), true);
+  if (skin == SKIN_TIDE) tideSelect(max(0, tmOfMode(chargeReturn)), true);
   glitchFrames = 5;
 }
 
@@ -4096,7 +4543,7 @@ void loop() {
   }
 
   uint32_t interval = (xferActive && xferKind != 3) ? 150 : 33;
-  if (mode == M_DECK && skin && orbitMoving()) interval = 15;      // spin as smoothly as the screen allows
+  if (mode == M_DECK && ((skin == SKIN_AERO && orbitMoving()) || (skin == SKIN_TIDE && tideMoving()))) interval = 15;      // spin as smoothly as the screen allows
   if (millis() - lastFrame >= interval) {
     lastFrame = millis();
     render();
