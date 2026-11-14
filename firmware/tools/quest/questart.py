@@ -39,6 +39,9 @@ def sprite(name, rows, cmap):
     carr(name, a.flatten())
 
 OVERRIDE = {
+  'QF_TITLE': {
+    'c': ['.####', '#####', '##...', '##...', '#####', '.####'],
+  },
   'QF_BODY': {
     '%': ['XX...X', 'XX..X.', '...X..', '..X...', '.X....', 'X...XX', '....XX'],
     '&': ['.XX..', 'X..X.', 'X.X..', '.X...', 'X.X.X', 'X..X.', '.XX.X'],
@@ -61,7 +64,7 @@ def font(name, path, size, chars=range(32, 127)):
             a = np.zeros_like(a)
             for j, row in enumerate(ov):
                 for i, px in enumerate(row):
-                    if px == 'X': a[bot - len(ov) + 1 + j, size + i] = 1
+                    if px in 'X#': a[bot - len(ov) + 1 + j, size + i] = 1
         adv = int(round(F.getlength(ch)))
         ys, xs = np.nonzero(a)
         if len(xs) == 0:

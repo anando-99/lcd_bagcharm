@@ -542,7 +542,17 @@
   const QSHEET = new Image(); QSHEET.src = 'assets/quest-sheet.png';
   const QMODE = [0, 4, 10, 9, 5, 6, 1, 2, 3, 7, 11];
   const QSCREEN = { 0: 22, 4: 23, 5: 24, 6: 25, 7: 26, 10: 27, 12: 28 };
-  let qloc = 0, qslide = null;
+  // Ronin: t00..t10 the landings (index 29..39), then its screens
+  const RSCREEN = { 0: 40, 4: 41, 10: 42, 5: 43, 6: 44, 7: 45, 12: 46 };
+  let qloc = 0, qslide = null, rloc = 0, rslide = null;
+  function qFrameY(i, dy) { c.imageSmoothingEnabled = false; if (QSHEET.complete && QSHEET.naturalWidth) c.drawImage(QSHEET, (i % 8) * 240, (i / 8 | 0) * 280, 240, 280, 0, dy, W, H); }
+  function roninHome() {
+    if (rslide) { const p = Math.min(1, (performance.now() - rslide.t) / 420), e = p < .5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2;
+      qFrameY(29 + rslide.from, rslide.dir * H * e); qFrameY(29 + rloc, -rslide.dir * H * (1 - e)); if (p >= 1) rslide = null; }
+    else qFrameY(29 + rloc, 0);
+  }
+  function roninScene(m) { if (m === 8) return roninHome(); if (RSCREEN[m] != null) return qFrameY(RSCREEN[m], 0); (scenes[m] || deck)(); }
+  window.roninStep = d => { const to = Math.max(0, Math.min(10, rloc + d)); if (to !== rloc) { rslide = { from: rloc, dir: d, t: performance.now() }; rloc = to; } };
   function qFrame(i, dx = 0) { c.imageSmoothingEnabled = false; if (QSHEET.complete && QSHEET.naturalWidth) c.drawImage(QSHEET, (i % 8) * 240, (i / 8 | 0) * 280, 240, 280, dx, 0, W, H); else R(0, 0, W, H, '#1a2050'); }
   function questHome() {
     const h = new Date().getHours(), night = h >= 20 || h < 6, base = night ? 11 : 0;
@@ -556,18 +566,29 @@
   // ── tap a block to open it, tap again to go back ──
   // Aero: drag sideways to spin the ring
   let drag = null;
-  cv.addEventListener('pointerdown', e => { drag = { x0: e.clientX, x: e.clientX, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+  cv.addEventListener('pointerdown', e => { drag = { x0: e.clientX, x: e.clientX, y0: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
   cv.addEventListener('pointermove', e => {
     if (!drag) return;
-    if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
+    if (Math.abs(e.clientX - drag.x0) > 6 || Math.abs(e.clientY - drag.y0) > 6) drag.moved = true;
     if (drag.moved && ui.skin === 1 && shownMode === 8) { const d = (e.clientX - drag.x) * W / cv.getBoundingClientRect().width * 0.012; orbit.a += d; orbit.v = d; orbit.drag = true; orbit.goal = null; }
     drag.x = e.clientX;
   });
-  cv.addEventListener('pointerup', e => { const d = drag; drag = null; orbit.drag = false; if (d && !d.moved) tapAt(e); });
+  cv.addEventListener('pointerup', e => {
+    const d = drag; drag = null; orbit.drag = false;
+    if (!d) return;
+    if (!d.moved) return tapAt(e);
+    const dy = e.clientY - d.y0;                       // Ronin: swipe up to climb, down to descend
+    if (ui.skin === 3 && shownMode === 8 && Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(e.clientX - d.x0)) window.roninStep(dy < 0 ? 1 : -1);
+  });
   cv.addEventListener('pointercancel', () => { drag = null; orbit.drag = false; });
   function tapAt(e) {
     const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
     if (ui.mode !== 8) return window.charmGoto(8);
+    if (ui.skin === 3) {
+      if (y < 92) return window.roninStep(1);
+      if (y > 196) return window.roninStep(-1);
+      return window.charmGoto(QMODE[rloc]);
+    }
     if (ui.skin === 2) {
       if (x < 66 || x > 174) { const d = x < 66 ? -1 : 1, from = qloc; qloc = (qloc + d + 11) % 11; qslide = { from, dir: d, t: performance.now() }; return; }
       return window.charmGoto(QMODE[qloc]);
@@ -587,12 +608,12 @@
     rx += (trx - rx) * 0.08; ry += (tryy - ry) * 0.08; tiltX = ry; tiltY = 0.4 + rx * 0.6;
     if (!calm) rig.style.transform = `rotateX(${(-rx * 9).toFixed(2)}deg) rotateY(${(ry * 13).toFixed(2)}deg)`;
     const s = song(), [r, g, b] = rgb(val('mColor') || '#f472b6'), mx = Math.max(r, g, b);
-    ACC = ui.playing && s.title && mx >= 40 ? `rgb(${r * 255 / mx | 0},${g * 255 / mx | 0},${b * 255 / mx | 0})` : ui.skin === 1 ? AERO_ACC[ui.aero] : ui.skin === 2 ? '#FAD25A' : THEMES[ui.theme] || THEMES[0];
+    ACC = ui.playing && s.title && mx >= 40 ? `rgb(${r * 255 / mx | 0},${g * 255 / mx | 0},${b * 255 / mx | 0})` : ui.skin === 1 ? AERO_ACC[ui.aero] : ui.skin === 2 ? '#FAD25A' : ui.skin === 3 ? '#E64638' : THEMES[ui.theme] || THEMES[0];
     if (ACC[0] !== '#') ACC = '#' + ACC.match(/\d+/g).map(v => (+v).toString(16).padStart(2, '0')).join('');
 
     if (ui.mode !== shownMode && !zoom) {
       const opening = shownMode === 8, ti = TMODE.indexOf(opening ? ui.mode : shownMode);
-      if (ui.skin === 2) { const l = QMODE.indexOf(opening ? ui.mode : shownMode); if (!opening && l >= 0) qloc = l; shownMode = ui.mode; }
+      if (ui.skin >= 2) { const l = QMODE.indexOf(opening ? ui.mode : shownMode); if (!opening && l >= 0) { if (ui.skin === 2) qloc = l; else rloc = l; } shownMode = ui.mode; }
       else if (ui.skin === 1) {
         const oi = ORB.findIndex(o => o[0] === (opening ? ui.mode : shownMode));
         if (!opening && oi >= 0) orbitFocus(oi, true);
@@ -616,7 +637,8 @@
         R(x, y, w, h, '#000'); c.strokeStyle = ACC; c.lineWidth = 2; c.strokeRect(x + 1, y + 1, w - 2, h - 2);
         if (zoom.s >= 7) { shownMode = zoom.to; zoom = null; glitch = Math.max(glitch, 3); }
       } else {
-        if (ui.skin === 2) questScene(shownMode);
+        if (ui.skin === 3) roninScene(shownMode);
+        else if (ui.skin === 2) questScene(shownMode);
         else if (ui.skin === 1) {
           const f = aeroScenes[shownMode];
           if (f) f(); else { (scenes[shownMode] || deck)(); aeroTop(true); }
