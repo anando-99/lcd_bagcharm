@@ -1,7 +1,7 @@
 # Builds 4-bit anti-aliased bitmap fonts (Nunito, SIL Open Font Licence) for the charm.
 import sys
 from PIL import Image, ImageDraw, ImageFont
-D='/tmp/claude-0/-home-claude/1ce155c8-5665-5b42-bccd-aa364e685530/scratchpad/fonts/'
+D='./fonts/'   # unpack the @fontsource/nunito npm package here
 SPEC=[('F_S',D+'fontsource-nunito-5.1.0/package/files/nunito-latin-700-normal.woff',14,' ','~'),
       ('F_M',D+'fontsource-nunito-5.1.0/package/files/nunito-latin-800-normal.woff',19,' ','~'),
       ('F_L',D+'fontsource-nunito-5.1.0/package/files/nunito-latin-800-normal.woff',28,' ','~'),
