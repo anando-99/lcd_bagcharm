@@ -11,10 +11,3 @@ All pixel art for the Quest look (skin 2) is drawn by these scripts; nothing is 
 - `preview.py day|night`: composites a few locations to a PNG to check the art.
 
 Fonts: put `Jersey15-Regular.ttf` and `Micro5-Regular.ttf` (Google Fonts, SIL Open Font Licence) in `fonts/` next to the scripts, then run `python3 questart.py ../../LarpCharm/questart.h`.
-
-## Ronin look
-
-- `rpal.py`: the Ronin palette (night, at war; kind 2 = gives off light).
-- `ronin_world.py`: the mountain: a stone stairway with a torii at each of 11 landings, cliff ledges alternating sides with one landmark each, plus far ridges, pines and blurred bamboo.
-- `ronin_sprites.py`: the samurai (side, back and front views, sword drawn, kneeling) and his back banner.
-- `roninart.py`: writes `firmware/LarpCharm/roninart.h`.
