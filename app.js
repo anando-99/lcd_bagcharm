@@ -2,8 +2,8 @@
 const SVC = '6e400001-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const RX  = '6e400002-c4a7-4d2e-9b3c-c4a2d7c0ffee';
 const ST  = '6e400003-c4a7-4d2e-9b3c-c4a2d7c0ffee';
-const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, CLIP_LIST:15, CLIP_PLAY:16, CLIP_DELETE:17, LOOK:18, TIMER:19, TOY:20, THEME:21, SKIN:22, EYES:23, TUNE:24, TORCH:25, SONG_LIST:26, SONG_DELETE:27};
-const MODE = {CLOCK:0, TEXT:1, PHOTO:2, CLIP:3, MUSIC:4, PET:5, TOY:6, CARD:7, DECK:8, EYES:9, JUKE:10, TORCH:11, CHARGE:12};
+const CMD = {MODE:1, TEXT:2, TIME:3, NOWPLAYING:4, XFER_BEGIN:5, XFER_DATA:6, XFER_END:7, BRIGHT:8, PET:9, CARD:10, SETTINGS:11, PING:12, BUZZ:13, FEED:14, LOOK:18, TIMER:19, TOY:20, THEME:21, SKIN:22, EYES:23, TUNE:24, TORCH:25, SONG_LIST:26, SONG_DELETE:27};
+const MODE = {CLOCK:0, TEXT:1, PHOTO:2, MUSIC:4, PET:5, TOY:6, CARD:7, DECK:8, EYES:9, JUKE:10, TORCH:11, CHARGE:12};
 const THEMES = ['#00E5FF', '#FF2BD6', '#FFB000', '#39FF14', '#FF3B30', '#C8DCFF'];
 const ui = window.ui = { mode: 8, bg: 9, face: 0, toy: 0, theme: 0, playing: false, artReady: false, skin: 0, aero: 0, expr: 255, torch: 0, jbSong: -1, jbQueue: 0, charging: false, bat: 76 };
 const CHUNK = 495, WINDOW = 16;
@@ -13,7 +13,7 @@ const $ = id => document.getElementById(id);
 const enc = new TextEncoder();
 let device = null, rxChar = null, stChar = null, manualDisconnect = false;
 let queue = Promise.resolve();
-let state = { fsUsed: 0, fsTotal: 0, clipId: 0, clips: [] };
+let state = { fsUsed: 0, fsTotal: 0 };
 
 function hud(msg){ const t = $('hud'); t.textContent = msg; t.classList.add('on'); if (window.kickCharm) kickCharm(3); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200); }
 const act = fn => async (...a) => { try { await fn(...a); } catch (e) { hud(e.message === 'not connected' ? 'Connect your Larp Charm first.' : e.message); } };
@@ -61,7 +61,6 @@ async function connectGatt(){
   $('heroConnect').textContent = 'Connected';
   await syncTime();
   await write(packet(CMD.PING));
-  await refreshClips();
   await refreshMySongs();
   hud('Connected to ' + (device.name || 'Larp Charm'));
   if (spotifyToken()) startSpotifyLoop();
@@ -84,7 +83,7 @@ async function onDisconnected(){
 }
 
 // ─────────── Notifications ───────────
-let ackBytes = 0, ackWaiters = [], xferWaiter = null, listCollect = null;
+let ackBytes = 0, ackWaiters = [], xferWaiter = null;
 function rejectWaiters(err){ ackWaiters.forEach(w => w.reject(err)); ackWaiters = []; if (xferWaiter) { xferWaiter.reject(err); xferWaiter = null; } }
 
 function onStatus(s){
@@ -95,11 +94,6 @@ function onStatus(s){
   }
   if (s.startsWith('media=')) { mediaControl(s.slice(6)); return; }
   if (s.startsWith('song=')) { const p = s.slice(5).split(','); if (songCollect) songCollect.push({ id: +p[0], n: +p[1], name: p.slice(2).join(',') || 'Song' }); return; }
-  if (s.startsWith('item=')) {
-    const p = s.slice(5).split(',');
-    if (listCollect) listCollect.push({ id: +p[0], frames: +p[1], bytes: +p[2], name: p.slice(3).join(',') || 'Clip' });
-    return;
-  }
   const kv = Object.fromEntries(s.split(';').map(x => { const i = x.indexOf('='); return [x.slice(0, i), x.slice(i + 1)]; }));
   if (kv.b !== undefined) setBattery(+kv.b, kv.c === '1');
   if (kv.fw) $('fw').textContent = kv.fw;
@@ -113,14 +107,12 @@ function onStatus(s){
   if (kv.jb !== undefined) { ui.jbSong = +kv.jb; ui.jbQueue = +(kv.q || 0); renderSongs(); }
   if (kv.imu !== undefined) $('imuNote').classList.toggle('hidden', kv.imu === '1');
   if (kv.fs) { const [u, t] = kv.fs.split(',').map(Number); state.fsUsed = u; state.fsTotal = t; renderStorage(); }
-  if (kv.clip !== undefined) { state.clipId = +kv.clip; renderClipList(); }
   if (kv.songs === 'end' && songCollect) { mySongs = songCollect; songCollect = null; renderMySongs(); }
   if (kv.songs === 'changed') refreshMySongs();
-  if (kv.list === 'end' && listCollect) { state.clips = listCollect; listCollect = null; renderClipList(); }
   if (kv.xfer && xferWaiter) {
     const w = xferWaiter; xferWaiter = null;
     if (kv.xfer === 'ok') w.resolve();
-    else w.reject(new Error({ full: 'The charm already has eight of your songs. Delete one first.', space: 'Not enough space on the charm. Delete a clip first.', nofs: 'Storage isn’t set up on the charm. Update its firmware.', format: 'The clip didn’t arrive intact. Try again.' }[kv.why] || 'Transfer failed. Try again.'));
+    else w.reject(new Error({ full: 'The charm already has eight of your songs. Delete one first.', space: 'Not enough space on the charm.', nofs: 'Storage isn’t set up on the charm. Update its firmware.', format: 'That didn’t arrive intact. Try again.' }[kv.why] || 'Transfer failed. Try again.'));
   }
 }
 
@@ -263,160 +255,8 @@ $('sendPhoto').onclick = act(async () => {
   finally { $('sendPhoto').disabled = false; pr.hide(2500); }
 });
 
-// ─────────── Clips (GIF / video → MJPEG) ───────────
-const cctx = $('clipCv').getContext('2d', { willReadFrequently: true });
-placeholder(cctx, W, H, 'No clip selected');
-let clipSrc = null;   // { kind:'gif'|'video'|'image', file, video?, decoder?, frameCount?, duration? }
-let previewTimer = null;
-seg('clipFit', () => { drawClipPreview(); estimateClip(); });
-seg('clipFps', estimateClip);
-seg('clipQ', estimateClip);
-
-function clipOpts(){
-  return { fit: $('clipFit').value, q: +$('clipQ').value, fps: +$('clipFps').value, start: +$('clipStart').value, len: +$('clipLen').value };
-}
-
 async function jpegBlob(canvas, q){ return new Promise(r => canvas.toBlob(r, 'image/jpeg', q)); }
 
-$('clipFile').onchange = act(async e => {
-  const file = e.target.files[0]; if (!file) return;
-  clearInterval(previewTimer);
-  if (clipSrc && clipSrc.decoder) clipSrc.decoder.close();
-  clipSrc = null;
-  $('sendClip').disabled = true;
-  $('clipName').value = file.name.replace(/\.[^.]+$/, '').slice(0, 20);
-  if (file.type === 'image/gif' || /\.gif$/i.test(file.name)) {
-    if (!('ImageDecoder' in window)) throw new Error('This browser can’t read GIF frames. Use Chrome.');
-    const decoder = new ImageDecoder({ data: await file.arrayBuffer(), type: 'image/gif' });
-    await decoder.tracks.ready;
-    await decoder.completed;
-    const frameCount = decoder.tracks.selectedTrack.frameCount;
-    let duration = 0;
-    for (let i = 0; i < Math.min(frameCount, 400); i++) { const { image } = await decoder.decode({ frameIndex: i }); duration += (image.duration || 100000) / 1e6; image.close(); }
-    if (frameCount > 400) duration *= frameCount / 400;
-    clipSrc = { kind: 'gif', file, decoder, frameCount, duration };
-    $('videoOpts').classList.add('hidden');
-    $('clipInfo').textContent = `GIF · ${frameCount} frames · ${duration.toFixed(1)} s`;
-    let fi = 0;
-    previewTimer = setInterval(async () => { if (!clipSrc || clipSrc.kind !== 'gif') return; const { image } = await decoder.decode({ frameIndex: fi }); drawFitted(cctx, image, W, H, $('clipFit').value); image.close(); fi = (fi + 1) % frameCount; }, 80);
-  } else if (file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name)) {
-    const v = document.createElement('video');
-    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(file);
-    await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('Couldn’t open that video. Try an MP4.')); });
-    clipSrc = { kind: 'video', file, video: v, duration: v.duration };
-    $('videoOpts').classList.remove('hidden');
-    $('clipStart').max = Math.max(0, v.duration - 1).toFixed(1); $('clipStart').value = 0;
-    $('clipLen').max = Math.max(1, Math.min(60, Math.floor(v.duration))); $('clipLen').value = Math.min(10, $('clipLen').max);
-    [$('clipStart'), $('clipLen')].forEach(rangeFill);
-    $('clipInfo').textContent = `Video · ${fmtTime(v.duration)} · ${v.videoWidth}×${v.videoHeight}`;
-    updateVideoLabels();
-    await seekVideo(v, 0); drawClipPreview();
-  } else throw new Error('Choose a GIF or a video file.');
-  $('sendClip').disabled = false;
-  estimateClip();
-});
-
-function seekVideo(v, t){ return new Promise(res => { if (Math.abs(v.currentTime - t) < 0.001 && v.readyState >= 2) return res(); const h = () => { v.removeEventListener('seeked', h); res(); }; v.addEventListener('seeked', h); v.currentTime = t; }); }
-function updateVideoLabels(){ const s = +$('clipStart').value; $('startVal').textContent = Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); $('lenVal').textContent = $('clipLen').value + ' s'; }
-$('clipStart').addEventListener('input', act(async () => { updateVideoLabels(); if (clipSrc && clipSrc.kind === 'video') { await seekVideo(clipSrc.video, +$('clipStart').value); drawClipPreview(); } estimateClip(); }));
-$('clipLen').addEventListener('input', () => { updateVideoLabels(); estimateClip(); });
-
-function drawClipPreview(){ if (clipSrc && clipSrc.kind === 'video') drawFitted(cctx, clipSrc.video, W, H, $('clipFit').value); }
-
-let estToken = 0;
-async function estimateClip(){
-  if (!clipSrc) return;
-  const tok = ++estToken, o = clipOpts();
-  const frames = clipSrc.kind === 'gif' ? clipSrc.frameCount : Math.max(1, Math.round(Math.min(o.len, clipSrc.duration - o.start) * o.fps));
-  const sample = await jpegBlob($('clipCv'), o.q);
-  if (tok !== estToken) return;
-  const bytes = frames * (sample.size * 1.08 + 6) + 38;
-  const free = state.fsTotal ? state.fsTotal - state.fsUsed : 0;
-  let msg = `About ${fmtBytes(bytes)} · ${frames} frames · roughly ${fmtTime(bytes / 30000)} to send.`;
-  if (free && bytes > free - 65536) msg += ` That’s more than the ${fmtBytes(free)} free. Shorten it or delete a clip.`;
-  $('clipEstimate').textContent = msg;
-}
-
-async function buildClip(onProgress){
-  const o = clipOpts(), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  const frames = [];
-  if (clipSrc.kind === 'gif') {
-    const d = clipSrc.decoder, n = Math.min(clipSrc.frameCount, 1500);
-    for (let i = 0; i < n; i++) {
-      const { image } = await d.decode({ frameIndex: i });
-      drawFitted(ctx, image, W, H, o.fit);
-      const delay = Math.max(20, Math.min(10000, Math.round((image.duration || 100000) / 1000)));
-      image.close();
-      frames.push({ data: new Uint8Array(await (await jpegBlob(cv, o.q)).arrayBuffer()), delay });
-      onProgress(i + 1, n);
-    }
-  } else {
-    const v = clipSrc.video, len = Math.min(o.len, v.duration - o.start), n = Math.max(1, Math.round(len * o.fps)), delay = Math.round(1000 / o.fps);
-    for (let i = 0; i < n; i++) {
-      await seekVideo(v, Math.min(v.duration - 0.01, o.start + i / o.fps));
-      drawFitted(ctx, v, W, H, o.fit);
-      frames.push({ data: new Uint8Array(await (await jpegBlob(cv, o.q)).arrayBuffer()), delay });
-      onProgress(i + 1, n);
-    }
-    await seekVideo(v, o.start); drawClipPreview();
-  }
-  // header: "LCLP" ver flags w h frames name[24]
-  const total = 38 + frames.reduce((s, f) => s + 6 + f.data.length, 0);
-  const out = new Uint8Array(total), dv = new DataView(out.buffer);
-  out.set(enc.encode('LCLP'), 0); out[4] = 1; out[5] = 0;
-  dv.setUint16(6, W, true); dv.setUint16(8, H, true); dv.setUint32(10, frames.length, true);
-  const name = enc.encode(ascii($('clipName').value || 'Clip').replace(/[;,]/g, ' ').slice(0, 23));
-  out.set(name, 14);
-  let off = 38;
-  for (const f of frames) { dv.setUint32(off, f.data.length, true); dv.setUint16(off + 4, f.delay, true); out.set(f.data, off + 6); off += 6 + f.data.length; }
-  return out;
-}
-
-$('sendClip').onclick = act(async () => {
-  if (!clipSrc) return;
-  if (!rxChar) throw new Error('not connected');
-  const pr = progress('clipProg'); pr.show('Preparing frames…');
-  $('sendClip').disabled = true; clearInterval(previewTimer);
-  try {
-    const bytes = await buildClip((i, n) => pr.set(i / n * 0.25, `Preparing frames ${i} of ${n}…`));
-    const free = state.fsTotal - state.fsUsed;
-    if (state.fsTotal && bytes.length > free - 65536) throw new Error(`This clip is ${fmtBytes(bytes.length)} but only ${fmtBytes(free)} is free. Shorten it or delete a clip.`);
-    const id = Math.floor(Date.now() / 1000);
-    await sendBlob(2, bytes, id, (f, eta) => pr.set(0.25 + f * 0.75, `Sending ${Math.round(f * 100)}%` + (eta != null ? ` · ${fmtTime(eta)} left` : '')));
-    pr.set(1, 'Playing on your charm.');
-    setActiveMode(MODE.CLIP);
-    await refreshClips();
-  } catch (e) { pr.set(0, e.message); throw e; }
-  finally { $('sendClip').disabled = false; pr.hide(3000); if (clipSrc && clipSrc.kind === 'gif') { let fi = 0; previewTimer = setInterval(async () => { if (!clipSrc || clipSrc.kind !== 'gif') return; const { image } = await clipSrc.decoder.decode({ frameIndex: fi }); drawFitted(cctx, image, W, H, $('clipFit').value); image.close(); fi = (fi + 1) % clipSrc.frameCount; }, 80); } }
-});
-
-async function refreshClips(){
-  if (!rxChar) return;
-  listCollect = [];
-  await write(packet(CMD.CLIP_LIST));
-}
-$('refreshClips').onclick = act(refreshClips);
-
-function renderClipList(){
-  const ul = $('clipList'); ul.innerHTML = '';
-  if (!rxChar) { ul.innerHTML = '<li class="empty">Connect to see your saved clips.</li>'; return; }
-  if (!state.clips.length) { ul.innerHTML = '<li class="empty">No clips yet. Send a GIF or video above.</li>'; return; }
-  for (const c of state.clips) {
-    const li = document.createElement('li');
-    const meta = document.createElement('div'); meta.className = 'meta';
-    const b = document.createElement('b'); b.textContent = c.name;
-    const sp = document.createElement('span'); sp.textContent = `${c.frames} frames · ${fmtBytes(c.bytes)}`;
-    meta.append(b, sp);
-    li.append(meta);
-    if (c.id === state.clipId) { const now = document.createElement('span'); now.className = 'now'; now.textContent = 'Now showing'; li.append(now); }
-    else { const play = document.createElement('button'); play.className = 'btn sm'; play.textContent = 'Play'; play.onclick = act(async () => { await write(packet(CMD.CLIP_PLAY, u32(c.id))); setActiveMode(MODE.CLIP); }); li.append(play); }
-    const del = document.createElement('button'); del.className = 'btn sm grey'; del.textContent = 'Delete';
-    del.onclick = act(async () => { if (!confirm(`Delete “${c.name}” from your charm?`)) return; listCollect = []; await write(packet(CMD.CLIP_DELETE, u32(c.id))); });
-    li.append(del);
-    ul.append(li);
-  }
-}
 function renderStorage(){
   if (!state.fsTotal) return;
   $('storageText').textContent = `${fmtBytes(state.fsUsed)} of ${fmtBytes(state.fsTotal)} used`;
@@ -587,7 +427,7 @@ $('syncTime').onclick = act(async () => { await syncTime(); hud('Time synced'); 
 $('findMe').onclick = act(() => write(packet(CMD.BUZZ, [5])));
 
 // ─────────── Remember inputs ───────────
-['txt', 'mTitle', 'mArtist', 'petName', 'cName', 'cSub', 'clipName'].forEach(id => {
+['txt', 'mTitle', 'mArtist', 'petName', 'cName', 'cSub'].forEach(id => {
   const el = $(id), v = localStorage.getItem('f_' + id); if (v !== null) el.value = v;
   el.addEventListener('change', () => localStorage.setItem('f_' + id, el.value));
 });

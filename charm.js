@@ -122,7 +122,7 @@
 
   // ── the deck ──
   const TX = [8, 8, 160, 8, 86, 9, 54, 99, 144, 189], TY = [26, 104, 104, 174, 174, 238, 238, 238, 238, 238], TW = [224, 146, 72, 72, 146, 42, 42, 42, 42, 42], TH = [72, 64, 64, 58, 58, 22, 22, 22, 22, 22];
-  const TMODE = [0, 4, 5, 6, 1, 2, 3, 7, 9, 10];
+  const TMODE = [0, 4, 5, 6, 1, 2, 11, 7, 9, 10];
   const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'], MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   const SPR = [
     ['K..........K', 'KK........KK', 'KBK......KBK', 'KBBKKKKKKBBK', 'KBBBBBBBBBBK', 'KBBKBBBBKBBK', 'KBBKBBBBKBBK', 'KBPBBKKBBPBK', 'KBBBBBBBBBBK', '.KBBBBBBBBK.', '..KBBBBBBK..', '...KKKKKK...'],
@@ -166,7 +166,7 @@
     x = TX[4]; y = TY[4]; hudPanel(x, y, TW[4], TH[4], ACC, .5);
     T(marquee((val('txt') || ' ').replace(/\n/g, ' '), 11, 5), x + 8, y + 16, 2, '#fff'); T(frame % 48 < 24 ? '> _' : '>', x + 8, y + 41, 1, ACC);
     tag('MSG', x + 10, y - 4);
-    ['IMG', 'VID', 'ID', 'EYE', 'JBX'].forEach((l, i) => { const k = 5 + i; hudPanel(TX[k], TY[k], TW[k], TH[k], ACC, .75); T(l, TX[k] + (TW[k] - l.length * 12) / 2, TY[k] + 4, 2, ACC); });
+    ['IMG', 'LUX', 'ID', 'EYE', 'JBX'].forEach((l, i) => { const k = 5 + i; hudPanel(TX[k], TY[k], TW[k], TH[k], ACC, .75); T(l, TX[k] + (TW[k] - l.length * 12) / 2, TY[k] + 4, 2, ACC); });
   }
 
   // ── full-screen blocks ──
@@ -227,7 +227,6 @@
   }
   function empty(label, big, l1) { R(0, 0, W, H, VOID); topBar(label, true); brackets(34, 84, 172, 100, 14, ACC); TC(big, 106, 2, ACC); TC(l1, 138, 1, '#fff'); TC('from the app', 152, 1, '#fff'); }
   const photo = () => $('sendPhoto').disabled && !ui.photoShown ? empty('//IMG', 'NO IMAGE', 'send a photo') : c.drawImage($('photoCv'), 0, 0);
-  const clip = () => $('sendClip').disabled ? empty('//VID', 'NO CLIPS', 'send a GIF or video') : c.drawImage($('clipCv'), 0, 0);
   function music() {
     const s = song();
     if (ui.artReady) c.drawImage($('artCv'), 0, 0);
@@ -276,7 +275,7 @@
   // ── the Aero look (mirrors firmware 5.0) ──
   const AERO_ACC = ['#0084FF', '#00A8D6', '#E840A8'], INK = '#08264e';
   const NUN = '"Nunito", "Trebuchet MS", sans-serif';
-  const ATITLE = { 0: 'Clock', 1: 'Message', 2: 'Photo', 3: 'Clips', 4: 'Music', 5: 'Pet', 6: 'Dice', 7: 'ID card', 8: 'Larp Charm', 9: 'Eyes', 10: 'Jukebox', 11: 'Torch', 12: 'Power' };
+  const ATITLE = { 0: 'Clock', 1: 'Message', 2: 'Photo', 4: 'Music', 5: 'Pet', 6: 'Dice', 7: 'ID card', 8: 'Larp Charm', 9: 'Eyes', 10: 'Jukebox', 11: 'Torch', 12: 'Power' };
   const bgCache = {};
   function lg(x, y0, y1, stops) { const g = x.createLinearGradient(0, y0, 0, y1); stops.forEach(([p, col]) => g.addColorStop(p, col)); return g; }
   function aeroBg(v) {
@@ -352,7 +351,7 @@
 
   // orbit home
   const ORB = [[0, 'Clock', '#008cff'], [4, 'Music', '#ff46a0'], [9, 'Eyes', '#145aeb'], [10, 'Jukebox', '#8c46ff'], [5, 'Pet', '#ff8c1e'], [6, 'Dice', '#28be46'],
-    [1, 'Message', '#00b9be'], [2, 'Photo', '#ffc400'], [3, 'Clips', '#eb373c'], [7, 'ID card', '#505adc'], [11, 'Torch', '#aabed2']];
+    [1, 'Message', '#00b9be'], [2, 'Photo', '#ffc400'], [7, 'ID card', '#505adc'], [11, 'Torch', '#aabed2']];
   const ON = ORB.length, STEP = Math.PI * 2 / ON, OCX = 120, OCY = 184, ORX = 90, ORY = 26;
   const orbit = { a: 0, v: 0, goal: null, drag: false, front: 0, pos: [] };
   function orbitFocus(i, instant) { let t = -i * STEP; t += Math.round((orbit.a - t) / (Math.PI * 2)) * Math.PI * 2; orbit.v = 0; if (instant) { orbit.a = t; orbit.goal = null; } else orbit.goal = t; }
@@ -536,7 +535,7 @@
     for (let i = 0; i < 10; i++) R(30 + i * 17, 140, 14, 36, i < Math.ceil(p / 10) - ((frame / 12 | 0) % 2 && i === Math.ceil(p / 10) - 1 ? 1 : 0) ? col : mixk(col, .16));
     TC('CHARGING  4.05V', 244, 1, '#fff');
   }
-  const scenes = { 0: clock, 1: text, 2: photo, 3: clip, 4: music, 5: pet, 6: toy, 7: card, 8: deck, 9: eyes, 10: jukeDeck, 11: torch, 12: chargeDeck };
+  const scenes = { 0: clock, 1: text, 2: photo, 4: music, 5: pet, 6: toy, 7: card, 8: deck, 9: eyes, 10: jukeDeck, 11: torch, 12: chargeDeck };
   // Quest: frames rendered by the firmware itself (desktop simulator), packed in one sheet.
   // d00..d10 day village, n00..n10 night village, then the screens behind the doors.
   const QSHEET = new Image(); QSHEET.src = 'assets/quest-sheet.png';
@@ -587,10 +586,12 @@
     if (ui.skin === 3) {
       if (y < 92) return window.roninStep(1);
       if (y > 196) return window.roninStep(-1);
+      if (QMODE[rloc] === 3) return;                  // the stage is empty
       return window.charmGoto(QMODE[rloc]);
     }
     if (ui.skin === 2) {
       if (x < 66 || x > 174) { const d = x < 66 ? -1 : 1, from = qloc; qloc = (qloc + d + 11) % 11; qslide = { from, dir: d, t: performance.now() }; return; }
+      if (QMODE[qloc] === 3) return;                  // the theatre is closed
       return window.charmGoto(QMODE[qloc]);
     }
     if (ui.skin === 1) {
