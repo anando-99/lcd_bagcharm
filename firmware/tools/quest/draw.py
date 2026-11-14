@@ -3,22 +3,19 @@ import numpy as np
 from pal import IDX
 
 class Canvas:
-    def __init__(s, w, h, y0=0, wrap=False, idx=None, wrapy=False):
-        s.w, s.h, s.y0, s.wrap, s.wrapy = w, h, y0, wrap, wrapy
-        s.idx = idx or IDX
+    def __init__(s, w, h, y0=0, wrap=False):
+        s.w, s.h, s.y0, s.wrap = w, h, y0, wrap
         s.a = np.zeros((h, w), np.uint8)
 
     def put(s, x, y, c):
         y -= s.y0
         if s.wrap: x %= s.w
-        if s.wrapy: y %= s.h
         if 0 <= x < s.w and 0 <= y < s.h and c is not None:
-            s.a[y, x] = s.idx[c] if isinstance(c, str) else c
+            s.a[y, x] = IDX[c] if isinstance(c, str) else c
 
     def get(s, x, y):
         y -= s.y0
         if s.wrap: x %= s.w
-        if s.wrapy: y %= s.h
         if 0 <= x < s.w and 0 <= y < s.h: return s.a[y, x]
         return 0
 
