@@ -968,9 +968,9 @@ void buildAeroBg() {
         if (t < 0.5f) { float k = t / 0.5f; r = 255 - 50 * k; g = 208 - 46 * k; b = 238 + 17 * k; }
         else          { float k = (t - 0.5f) / 0.5f; r = 205 - 105 * k; g = 162 - 96 * k; b = 255 - 55 * k; }
         for (int i = 0; i < 3; i++) {
-          static const float BX[3] = {48, 196, 120}, BY[3] = {70, 150, 238}, BR[3] = {40, 56, 34};
-          float dx = x - BX[i], dy = y - BY[i], d = sqrtf(dx * dx + dy * dy);
-          float a = clamp01((BR[i] - d) / 3) * 0.16f + clamp01(1 - fabsf(d - BR[i]) / 1.5f) * 0.28f;
+          static const float BOKEH_X[3] = {48, 196, 120}, BOKEH_Y[3] = {70, 150, 238}, BOKEH_R[3] = {40, 56, 34};
+          float dx = x - BOKEH_X[i], dy = y - BOKEH_Y[i], d = sqrtf(dx * dx + dy * dy);
+          float a = clamp01((BOKEH_R[i] - d) / 3) * 0.16f + clamp01(1 - fabsf(d - BOKEH_R[i]) / 1.5f) * 0.28f;
           r = scr(r, a); g = scr(g, a); b = scr(b, a);
         }
         float yc = 136 + 24 * sinf(x * 0.02f + 0.4f), dd = (y - yc) / 8;
