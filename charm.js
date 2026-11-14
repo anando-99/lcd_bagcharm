@@ -494,7 +494,7 @@
     for (const k of Object.keys(NEU)) { ey.L[k] += (ey.TL[k] - ey.L[k]) * 0.28; ey.R[k] += (ey.TR[k] - ey.R[k]) * 0.28; }
     if (now > ey.nextBlink) { ey.blink = now; ey.nextBlink = now + (Math.random() < 0.2 ? 280 : 2200 + Math.random() * 3800); }
     const el = now - ey.blink, bf = el < 90 ? 1 - el / 90 * 0.92 : el < 180 ? 0.08 + (el - 90) / 90 * 0.92 : 1;
-    const aero = ui.skin !== 0, bgFill = aero ? lg(c, 0, H, [[0, '#000e28'], [1, '#000']]) : '#000';
+    const aero = ui.skin === 1, bgFill = aero ? lg(c, 0, H, [[0, '#000e28'], [1, '#000']]) : '#000';
     c.fillStyle = bgFill; c.fillRect(0, 0, W, H);
     if (!aero) for (let y = 10; y < H; y += 20) for (let x = 10; x < W; x += 20) R(x, y, 1, 1, '#001a34');
     let cy = 140 + ey.ly; if (ey.shown === 2) cy += Math.sin(now / 1000 * 22) * 3; if (ui.playing) cy += Math.sin(now / 1000 * 7.5) * 3;
@@ -537,20 +537,6 @@
     TC('CHARGING  4.05V', 244, 1, '#fff');
   }
   const scenes = { 0: clock, 1: text, 2: photo, 3: clip, 4: music, 5: pet, 6: toy, 7: card, 8: deck, 9: eyes, 10: jukeDeck, 11: torch, 12: chargeDeck };
-  // Quest: frames rendered by the firmware itself (desktop simulator), packed in one sheet.
-  // d00..d10 day village, n00..n10 night village, then the screens behind the doors.
-  const QSHEET = new Image(); QSHEET.src = 'assets/quest-sheet.png';
-  const QMODE = [0, 4, 10, 9, 5, 6, 1, 2, 3, 7, 11];
-  const QSCREEN = { 0: 22, 4: 23, 5: 24, 6: 25, 7: 26, 10: 27, 12: 28 };
-  let qloc = 0, qslide = null;
-  function qFrame(i, dx = 0) { c.imageSmoothingEnabled = false; if (QSHEET.complete && QSHEET.naturalWidth) c.drawImage(QSHEET, (i % 8) * 240, (i / 8 | 0) * 280, 240, 280, dx, 0, W, H); else R(0, 0, W, H, '#1a2050'); }
-  function questHome() {
-    const h = new Date().getHours(), night = h >= 20 || h < 6, base = night ? 11 : 0;
-    if (qslide) { const p = Math.min(1, (performance.now() - qslide.t) / 380), e = p < .5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2;
-      qFrame(base + qslide.from, -qslide.dir * W * e); qFrame(base + qloc, qslide.dir * W * (1 - e)); if (p >= 1) qslide = null; }
-    else qFrame(base + qloc);
-  }
-  function questScene(m) { if (m === 8) return questHome(); if (QSCREEN[m] != null) return qFrame(QSCREEN[m]); (scenes[m] || deck)(); }
   const aeroScenes = { 0: aeroClock, 4: aeroMusic, 5: aeroPet, 6: aeroToy, 7: aeroCard, 8: aeroHome, 9: eyes, 10: aeroJuke, 11: torch, 12: aeroCharge };
 
   // ── tap a block to open it, tap again to go back ──
@@ -568,10 +554,6 @@
   function tapAt(e) {
     const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
     if (ui.mode !== 8) return window.charmGoto(8);
-    if (ui.skin === 2) {
-      if (x < 66 || x > 174) { const d = x < 66 ? -1 : 1, from = qloc; qloc = (qloc + d + 11) % 11; qslide = { from, dir: d, t: performance.now() }; return; }
-      return window.charmGoto(QMODE[qloc]);
-    }
     if (ui.skin === 1) {
       for (const it of [...orbit.pos].reverse()) if ((x - it.x) ** 2 + (y - it.y) ** 2 <= (it.r + 5) ** 2) { if (it.i === orbit.front && orbit.goal == null) return window.charmGoto(ORB[it.i][0]); return orbitFocus(it.i, false); }
       if (y < 128) return window.charmGoto(0);
@@ -587,13 +569,12 @@
     rx += (trx - rx) * 0.08; ry += (tryy - ry) * 0.08; tiltX = ry; tiltY = 0.4 + rx * 0.6;
     if (!calm) rig.style.transform = `rotateX(${(-rx * 9).toFixed(2)}deg) rotateY(${(ry * 13).toFixed(2)}deg)`;
     const s = song(), [r, g, b] = rgb(val('mColor') || '#f472b6'), mx = Math.max(r, g, b);
-    ACC = ui.playing && s.title && mx >= 40 ? `rgb(${r * 255 / mx | 0},${g * 255 / mx | 0},${b * 255 / mx | 0})` : ui.skin === 1 ? AERO_ACC[ui.aero] : ui.skin === 2 ? '#FAD25A' : THEMES[ui.theme] || THEMES[0];
+    ACC = ui.playing && s.title && mx >= 40 ? `rgb(${r * 255 / mx | 0},${g * 255 / mx | 0},${b * 255 / mx | 0})` : ui.skin === 1 ? AERO_ACC[ui.aero] : THEMES[ui.theme] || THEMES[0];
     if (ACC[0] !== '#') ACC = '#' + ACC.match(/\d+/g).map(v => (+v).toString(16).padStart(2, '0')).join('');
 
     if (ui.mode !== shownMode && !zoom) {
       const opening = shownMode === 8, ti = TMODE.indexOf(opening ? ui.mode : shownMode);
-      if (ui.skin === 2) { const l = QMODE.indexOf(opening ? ui.mode : shownMode); if (!opening && l >= 0) qloc = l; shownMode = ui.mode; }
-      else if (ui.skin === 1) {
+      if (ui.skin === 1) {
         const oi = ORB.findIndex(o => o[0] === (opening ? ui.mode : shownMode));
         if (!opening && oi >= 0) orbitFocus(oi, true);
         const it = orbit.pos.find(p => p.i === oi);
@@ -616,19 +597,18 @@
         R(x, y, w, h, '#000'); c.strokeStyle = ACC; c.lineWidth = 2; c.strokeRect(x + 1, y + 1, w - 2, h - 2);
         if (zoom.s >= 7) { shownMode = zoom.to; zoom = null; glitch = Math.max(glitch, 3); }
       } else {
-        if (ui.skin === 2) questScene(shownMode);
-        else if (ui.skin === 1) {
+        if (ui.skin === 1) {
           const f = aeroScenes[shownMode];
           if (f) f(); else { (scenes[shownMode] || deck)(); aeroTop(true); }
         } else {
           (scenes[shownMode] || deck)();
           if ([0, 5, 6, 7].includes(shownMode)) ticker();
         }
-        if (ui.skin === 0 && ![2, 3, 4, 11].includes(shownMode) && $('optFx').checked) { c.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 1; y < H; y += 2) c.fillRect(0, y, W, 1); }
+        if (ui.skin !== 1 && ![2, 3, 4, 11].includes(shownMode) && $('optFx').checked) { c.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 1; y < H; y += 2) c.fillRect(0, y, W, 1); }
       }
     } catch (e) { /* one bad frame must not stop the preview */ }
     c.restore();
-    if (glitch > 0 && ui.skin === 0) {
+    if (glitch > 0 && ui.skin !== 1) {
       glitch--;
       for (let k = 0; k < 5; k++) { const y = Math.random() * (H - 16) | 0, h = 2 + Math.random() * 12 | 0, off = (Math.random() * 56 - 28) | 0; c.drawImage(cv, 0, y, W, h, off, y, W, h); }
       R(0, Math.random() * H | 0, W, 1, ACC);

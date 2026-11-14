@@ -631,20 +631,20 @@ document.querySelectorAll('#timerPresets button').forEach(b => b.onclick = () =>
 $('startTimer').onclick = () => startTimer(+$('timerMin').value);
 $('cancelTimer').onclick = act(async () => { await write(packet(CMD.TIMER, [0, 0])); hud('Timer cancelled'); });
 
-// ─────────── Look: Deck, Aero or Quest ───────────
+// ─────────── Look: Deck or Aero ───────────
 const AERO_ACC = ['#0084FF', '#00A8D6', '#E840A8'];
 function setSkinUi(sk, av){
   ui.skin = sk; ui.aero = av;
   document.querySelectorAll('#skins .lookcard').forEach(b => b.classList.toggle('on', +b.dataset.v === sk));
   document.querySelectorAll('#aeroSeg button').forEach(b => b.classList.toggle('on', +b.dataset.v === av));
   $('aeroStyles').classList.toggle('hidden', sk !== 1);
-  document.documentElement.style.setProperty('--acc', sk === 1 ? AERO_ACC[av] : sk === 2 ? '#FAD25A' : THEMES[ui.theme]);
+  document.documentElement.style.setProperty('--acc', sk === 1 ? AERO_ACC[av] : THEMES[ui.theme]);
   localStorage.setItem('o_skin', sk); localStorage.setItem('o_aero', av);
 }
 function sendSkin(){ if (window.kickCharm) kickCharm(3); if (rxChar) write(packet(CMD.SKIN, [ui.skin, ui.aero])).catch(() => {}); }
 document.querySelectorAll('#skins .lookcard').forEach(b => b.onclick = () => { setSkinUi(+b.dataset.v, ui.aero); sendSkin(); });
 document.querySelectorAll('#aeroSeg button').forEach(b => b.onclick = () => { setSkinUi(1, +b.dataset.v); sendSkin(); });
-setSkinUi(+(localStorage.getItem('o_skin') || 0) % 3, +(localStorage.getItem('o_aero') || 0));
+setSkinUi(+(localStorage.getItem('o_skin') || 0), +(localStorage.getItem('o_aero') || 0));
 
 // ─────────── Eyes ───────────
 function setExprUi(e){
