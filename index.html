@@ -233,6 +233,8 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
 .lk-aero i{position:absolute;bottom:18%;width:18%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 30%,#fff 0 18%,transparent 40%),radial-gradient(circle at 50% 80%,#ffffff99,transparent 60%),var(--c);box-shadow:0 2px 4px #0005}
 .lk-aero i:nth-child(1){left:6%;--c:#8c46ff;transform:scale(.7)}.lk-aero i:nth-child(2){left:22%;--c:#ff46a0;transform:scale(.85)}.lk-aero i:nth-child(3){left:41%;--c:#008cff;transform:scale(1.15)}
 .lk-aero i:nth-child(4){left:60%;--c:#28be46;transform:scale(.85)}.lk-aero i:nth-child(5){left:76%;--c:#ffc400;transform:scale(.7)}
+.lk-quest{background:url(assets/quest-sheet.png) no-repeat;background-size:800% auto;background-position:14.2857% 9%;image-rendering:pixelated;border-radius:6px;box-shadow:inset 0 0 0 2px #1b1640}
+.lk-quest::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 70%,#0006)}
 /* eyes */
 .exprs{display:flex;flex-wrap:wrap;gap:8px}
 .exprs button{border:0;cursor:pointer;padding:8px 12px;background:var(--deep);color:var(--soft);font-weight:600;font-size:14px;box-shadow:inset 0 0 0 1px var(--edge)}
@@ -335,10 +337,11 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
     <section class="panel" id="skin">
       <span class="tag">LOOK</span>
       <h2>Pick a look</h2>
-      <p class="lede">Two complete looks for the same charm. Switch here, or press and hold the home screen on the charm.</p>
+      <p class="lede">Three complete looks for the same charm. Switch here, or press and hold the home screen on the charm.</p>
       <div class="looks" id="skins">
         <button class="lookcard on" data-v="0"><span class="lk-deck"><i></i><i></i><i></i><i></i><i></i></span><b>Deck</b><small>Cyberdeck. Everything on one screen, tap a block to open it.</small></button>
         <button class="lookcard" data-v="1"><span class="lk-aero"><i></i><i></i><i></i><i></i><i></i></span><b>Aero</b><small>Glossy and bubbly. Spin a ring of orbs by dragging or tilting the charm.</small></button>
+        <button class="lookcard" data-v="2"><span class="lk-quest"></span><b>Quest</b><small>A pixel-art JRPG village. Walk between landmarks and step inside. Lit by the real time of day.</small></button>
       </div>
       <div class="field" id="aeroStyles" style="margin-top:20px">
         <span class="label">Aero style</span>
@@ -599,9 +602,10 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:13.5px;color
       <h2>On the charm itself</h2>
       <p class="lede">No app needed for these.</p>
       <ul class="cheat">
-        <li><b>Press and hold the home screen</b><span>Switches between Deck and Aero.</span></li>
+        <li><b>Press and hold the home screen</b><span>Switches between Deck, Aero and Quest.</span></li>
         <li><b>Deck: tap a block</b><span>Opens it full screen.</span></li>
         <li><b>Aero: drag sideways or tilt</b><span>Spins the ring. Tap the front orb to open it, or any other orb to bring it to the front.</span></li>
+        <li><b>Quest: tap an edge or swipe sideways</b><span>Your hero walks to the next landmark. Tap the middle to go inside. Shake for a jump (and coins).</span></li>
         <li><b>Swipe down</b><span>Closes whatever is open. The side button does the same.</span></li>
         <li><b>Swipe sideways</b><span>Deck home: colour. Clock: backdrop or style. Music: next or previous song. Eyes: next mood. Jukebox: next shelf, or next song in Aero.</span></li>
         <li><b>Tap inside a block</b><span>Clock: clock style. Music: left back, middle pause, right skip. Eyes: a reaction. Jukebox: tap a song to play or queue it, tap the bottom strip to stop or skip. Dice: roll.</span></li>
